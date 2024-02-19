@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "Reference manager",
+  "description": "Retrieve DOI data from web page and manage your local references",
+  "version": "1.0",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "refer_extension@example.org",
+      "strict_min_version": "54.0a1"
+    }
+  },
+  "permissions": [
+    "<all_urls>",
+    "clipboardWrite",
+    "downloads",
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "web_accessible_resources": [
+    "files/*.pdf",
+    "library/*.json",
+    "config.json"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "sidebar_action": {
+    "default_icon": "image/book-half.svg",
+    "default_title": "Ref manager",
+    "default_panel": "sidebar/sidebar.html"
+  },
+  "commands": {
+    "_execute_sidebar_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      }
+    }
+  }
+}

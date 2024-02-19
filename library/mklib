@@ -1,0 +1,26 @@
+#!/bin/zsh
+
+SUFFIX=".json"
+
+if [ -f $1 ]; then
+  while read line
+  do
+    mkdir -p "${line%\/*}"
+    if [ -f $line$SUFFIX ]; then
+    else
+      echo $line$SUFFIX
+      touch $line$SUFFIX
+      curl -LH "Accept: application/vnd.citationstyles.csl+json" "https://doi.org/$line" > $line$SUFFIX
+      sleep 1
+    fi
+  done < $1
+else
+  mkdir -p "${1%\/*}"
+  if [ -f $1$SUFFIX ]; then
+  else
+    echo $1$SUFFIX
+    touch $1$SUFFIX
+    curl -LH "Accept: application/vnd.citationstyles.csl+json" "https://doi.org/$1" > $1$SUFFIX
+    sleep 1
+  fi
+fi
