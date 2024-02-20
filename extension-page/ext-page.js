@@ -31,24 +31,28 @@ function formatAuthor(entry) {
     }
 }
 
+function matchArr(array, fn) {
+    return array.every((varr) => {
+        return varr.some((v) => fn(v))
+    })
+}
+
 function currentFilter(entry) {
     let show = true
     for (const [key, filter] of Object.entries(filters)) {
         const value = filter.value
         if (show) {
             if (value && value !== "") {
+                const valueArr = value.split(",").map((str) => { return str.split('|')})
                 switch (key) {
                     case "author":
-                        show = entry[key] && Array.isArray(entry[key]) && entry[key].map((aut) => { return aut["given"] + " " + aut["family"] }).join(", ").includes(value) ? true : false
+                        show = entry[key] && Array.isArray(entry[key]) && matchArr(valueArr, (v) => entry[key].map((aut) => { return aut["given"] + " " + aut["family"] }).join(", ").includes(v))
                         break;
                     case "year":
-                        show = entry["date"] && String(entry["date"][0]).includes(value) ? true : false
-                        break;
-                    case "tag":
-                        show = entry[key] && value.split(",").every((v) => entry[key].includes(v)) ? true : false
+                        show = entry["date"] && matchArr(valueArr, (v) => String(entry["date"][0]).includes(v))
                         break;
                     default:
-                        show = entry[key] && entry[key].includes(value) ? true : false
+                        show = entry[key] && matchArr(valueArr, (v) => entry[key].includes(v))
                         break;
                 }
             }
