@@ -16,6 +16,7 @@ import {
 } from "./cache.js"
 
 let pathToExtension
+let extensionName
 
 const idField = new IdFieldManager()
 const libField = new LibFieldManager()
@@ -25,6 +26,13 @@ let download = {}
 
 let mode = "lib"
 const containers = {}
+
+function confirmPromise(message) {
+    if (window.confirm(message)) {
+        return Promise.resolve();
+    }
+    return Promise.reject();
+}
 
 async function getId(tabId, type) {
     if (type === "url") {
@@ -53,14 +61,8 @@ async function getId(tabId, type) {
 }
 
 async function showLibrary(id) {
-    switch (mode) {
-        case "lib":
-            await libField.setFromLibrary(id);
-            break;
-        case "edit":
-            await editField.setAuto(id);
-            break;
-    }
+    await libField.setFromLibrary(id);
+    await editField.setAuto(id);
     return;
 }
 
@@ -94,10 +96,12 @@ async function switchMode(newMode) {
 }
 
 window.addEventListener('load', async () => {
-    pathToExtension = await fetch(browser.runtime.getURL("config.json")).then((resp) => {
+    await fetch(browser.runtime.getURL("config.json")).then((resp) => {
         return resp.json()
     }).then((body) => {
-        return body["dir"] + "/"
+        pathToExtension = body["dir"] + "/"
+        extensionName = body["name"]
+        return;
     });
 
     browser.tabs.onActivated.addListener(async (info) => { await loadTab(info.tabId) })
@@ -130,32 +134,55 @@ window.addEventListener('load', async () => {
     })
 
     browser.downloads.onCreated.addListener(async (item) => {
+        console.log(item)
         if (item.filename.startsWith(pathToExtension + "files/")) {
             const filename = item.filename.replace(pathToExtension + "files/", "")
             await editField.setFilename(filename, "File downloaded to local storage.")
             await updateCache(idField.currentId, { "localfile": filename });
             download[item.id] = idField.currentId;
             return;
+        } else {
+            await browser.downloads.pause(item.id).then(() => {
+                return confirmPromise("Move file to the storage?");
+            }).then(async () => {
+                return await browser.downloads.cancel(item.id).finally(() => {
+                    return browser.downloads.erase({ id: item.id });
+                }).finally(() => {
+                    return browser.downloads.download({
+                        url: item.url,
+                        saveAs: true
+                    });
+                }).catch(() => {
+                    alert(extensionName + " cannot handle this file. Choose the correct storage directory or turn off " + extensionName + ".")
+                });
+            }, async () => {
+                await browser.downloads.resume(item.id).catch(() => {
+                    alert("Turn off " + extensionName + " to put this file outside the storage.")
+                    return browser.downloads.erase({ id: item.id });
+                });
+                return;
+            })
         }
     })
 
     browser.downloads.onChanged.addListener(async (item) => {
-        if (item.state && item.state.current === "complete") {
-            const id = download[item.id]
-            let body = {}
-            body[id.type] = id.value
-            const focusedType = idField.set(body)
-            showLibrary(idField.show(focusedType))
+        const id = download[item.id]
+        if (id) {
+            if (item.state && item.state.current === "complete") {
+                let body = {}
+                body[id.type] = id.value
+                const focusedType = idField.set(body)
+                showLibrary(idField.show(focusedType))
+            }
         }
     })
 
     document.getElementById("page-open").addEventListener('click', () => {
-        browser.tabs.create({
-            url: browser.runtime.getURL("extension-page/index.html")
-        })
+        browser.tabs.create({ url: browser.runtime.getURL("extension-page/index.html") })
     })
-    document.getElementById("edit-save").addEventListener('click', () => {
-        editField.saveChange(idField.currentId);
+    document.getElementById("edit-save").addEventListener('click', async () => {
+        await confirmPromise("Do you want to save the changes?");
+        await editField.saveChange(idField.currentId);
     })
     document.getElementById("delete-cache").addEventListener('click', async () => {
         await browser.storage.local.clear();
@@ -180,5 +207,6 @@ for (const container of document.getElementById("containers").childNodes) {
 }
 
 switchMode(mode)
+await browser.storage.local.clear();
 let curTab = await browser.tabs.query({ currentWindow: true, active: true });
 await loadTab(curTab[0].id);
