@@ -93,10 +93,14 @@ function setTable() {
             }
             const type = regex[0].replace("/", "")
             const value = full.replace(regex[0], "")
-            node.addEventListener('click', () => {
+            node.addEventListener('click', async () => {
                 let body = {}
                 body[type] = value;
-                browser.runtime.sendMessage({ mode: "edit", id: body })
+                await browser.sidebarAction.open().then(() => {
+                    return new Promise(resolve => {setTimeout(resolve, 100)})
+                }).finally(() => {
+                    return browser.runtime.sendMessage({ mode: "edit", id: body })
+                })
             })
         }
     }

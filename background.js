@@ -39,16 +39,17 @@ async function isAccessibleFile(filename) {
 async function redirectId(id) {
     const data = await searchLibrary(id);
     if (data["localfile"]) {
-        const url = await isAccessibleFile(data["localfile"])
+        const url = await isAccessibleFile(data["localfile"]);
         const body = {}
         body[id.type] = id.value
-        await browser.runtime.sendMessage({ id: body });
-        await browser.windows.create({
-            type: "detached_panel",
-            url: url,
-            height: 1080,
-            width: 1440
-        });
+        await browser.runtime.sendMessage({ id: body }).finally(() => {
+            return browser.windows.create({
+                type: "detached_panel",
+                url: url,
+                height: 1080,
+                width: 1440
+            });
+        })
     }
 }
 
