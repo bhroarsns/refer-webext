@@ -178,13 +178,16 @@ class EditFieldManager {
             return;
         }
         this.reset()
+        Object.values(this.fields).forEach((field) => { field.setAttribute("disabled", "true") })
         let data = await getCache(id);
         if (data) {
             this.log("Metadata load from cache.")
             await this.fill(data);
             await setCache(id, data);
+            Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
             return;
         } else {
+            Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
             throw new Error("No cache found for this ID.");
         }
     }
@@ -194,6 +197,7 @@ class EditFieldManager {
             return;
         }
         this.reset()
+        Object.values(this.fields).forEach((field) => { field.setAttribute("disabled", "true") })
         this.log("Fetching from internet...")
 
         try {
@@ -206,6 +210,7 @@ class EditFieldManager {
                 this.log("Metadata fetched.")
                 await this.fill(data);
                 await setCache(id, data);
+                Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
                 return;
             } else if (id.type === "arxiv") {
                 const response = await fetch(
@@ -245,12 +250,15 @@ class EditFieldManager {
                 this.log("Metadata fetched.")
                 await this.fill(data);
                 await setCache(id, data);
+                Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
                 return;
             } else {
+                Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
                 throw new Error("No valid ID type given.");
             }
         } catch (e) {
             console.log(e)
+            Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
             throw new Error("Failed to fetch metadata.")
         }
     }
@@ -260,12 +268,15 @@ class EditFieldManager {
             return;
         }
         this.reset()
+        Object.values(this.fields).forEach((field) => { field.setAttribute("disabled", "true") })
         return searchLibrary(id).then(async (data) => {
             this.log("Found in the local library.")
             await this.fill(data);
             await setCache(id, data);
+            Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
             return;
         }).catch(() => {
+            Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
             throw new Error("Not found in the local library.")
         })
     }
