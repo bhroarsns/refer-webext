@@ -110,7 +110,7 @@ window.addEventListener('load', async () => {
         curTab = await browser.tabs.query({ windowId: windowId, active: true });
         await loadTab(curTab[0].id)
     })
-    
+
     document.getElementById("id-get").addEventListener('click', async () => {
         curTab = await browser.tabs.query({ currentWindow: true, active: true });
         await loadTab(curTab[0].id, true);
