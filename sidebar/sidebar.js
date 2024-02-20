@@ -106,6 +106,11 @@ window.addEventListener('load', async () => {
 
     browser.tabs.onActivated.addListener(async (info) => { await loadTab(info.tabId) })
     browser.tabs.onUpdated.addListener(async (tabId) => { await loadTab(tabId) })
+    browser.windows.onFocusChanged.addListener(async (windowId) => {
+        curTab = await browser.tabs.query({ windowId: windowId, active: true });
+        await loadTab(curTab[0].id)
+    })
+    
     document.getElementById("id-get").addEventListener('click', async () => {
         curTab = await browser.tabs.query({ currentWindow: true, active: true });
         await loadTab(curTab[0].id, true);
@@ -191,8 +196,8 @@ window.addEventListener('load', async () => {
 })
 
 browser.runtime.onMessage.addListener(async (msg) => {
-    switchMode("lib")
-    await showLibrary(idField.show(idField.set(msg, true)));
+    switchMode(msg["mode"] ? msg["mode"] : "lib")
+    await showLibrary(idField.show(idField.set(msg["id"], true)));
 })
 
 libField.reset()

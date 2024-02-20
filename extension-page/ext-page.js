@@ -96,7 +96,7 @@ function setTable() {
             node.addEventListener('click', () => {
                 let body = {}
                 body[type] = value;
-                browser.runtime.sendMessage(body)
+                browser.runtime.sendMessage({ mode: "edit", id: body })
             })
         }
     }

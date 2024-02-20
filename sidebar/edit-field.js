@@ -45,8 +45,8 @@ async function convertDataToField(key, input) {
                     }
                 })
                 candidates.sort((a, b) => {
-                    const aStr = "" + a[0] + (a[1] > 10 ? a[1] : "0" + a[1]) + (a[2] > 10 ? a[2] : "0" + a[2])
-                    const bStr = "" + b[0] + (b[1] > 10 ? b[1] : "0" + b[1]) + (b[2] > 10 ? b[2] : "0" + b[2])
+                    const aStr = "" + a[0] + (a[1] < 10 ? "0" + a[1] : a[1]) + (a[2] < 10 ? "0" + a[2] : a[2])
+                    const bStr = "" + b[0] + (b[1] < 10 ? "0" + b[1] : b[1]) + (b[2] < 10 ? "0" + b[2] : b[2])
                     if (aStr < bStr) {
                         return -1
                     } else if (aStr > bStr) {
@@ -59,7 +59,7 @@ async function convertDataToField(key, input) {
             }
             return formatString(
                 input["date"],
-                (a) => { return a[0] + "-" + (a[1] > 10 ? a[1] : "0" + a[1]) + "-" + (a[2] > 10 ? a[2] : "0" + a[2]) }
+                (a) => { return a[0] + "-" + (a[1] < 10 ?  "0" + a[1] : a[1]) + "-" + (a[2] < 10 ? "0" + a[2] : a[2]) }
             )
         case "journal":
             return formatString(input["container-title"]);

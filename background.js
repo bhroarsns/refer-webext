@@ -42,7 +42,7 @@ async function redirectId(id) {
         const url = await isAccessibleFile(data["localfile"])
         const body = {}
         body[id.type] = id.value
-        await browser.runtime.sendMessage(body);
+        await browser.runtime.sendMessage({ id: body });
         await browser.windows.create({
             type: "detached_panel",
             url: url,
@@ -57,7 +57,7 @@ async function redirectDoi(details) {
         return;
     }
     const doi = details.url.replace("https://doi.org/", "").replace("https://dx.doi.org/", "");
-    await redirectId({type: "doi", value: doi})
+    await redirectId({ type: "doi", value: doi })
     return;
 }
 
@@ -68,7 +68,7 @@ async function redirectArxiv(details) {
     if (version) {
         arxiv = arxiv.replace(version[0], "")
     }
-    await redirectId({type: "arxiv", value: arxiv})
+    await redirectId({ type: "arxiv", value: arxiv })
     return;
 }
 
@@ -95,3 +95,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(async (details) => {
         console.log(e.message);
     }
 }, { urls: ["https://arxiv.org/abs/*"] }, ["blocking"]);
+
+browser.browserAction.onClicked.addListener(() => {
+    browser.sidebarAction.open()
+})
