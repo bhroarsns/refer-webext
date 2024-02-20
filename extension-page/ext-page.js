@@ -43,7 +43,7 @@ function currentFilter(entry) {
         const value = filter.value
         if (show) {
             if (value && value !== "") {
-                const valueArr = value.split(",").map((str) => { return str.split('|')})
+                const valueArr = value.split(",").map((str) => { return str.split('|') })
                 switch (key) {
                     case "author":
                         show = entry[key] && Array.isArray(entry[key]) && matchArr(valueArr, (v) => entry[key].map((aut) => { return aut["given"] + " " + aut["family"] }).join(", ").includes(v))
@@ -101,7 +101,7 @@ function setTable() {
                 let body = {}
                 body[type] = value;
                 await browser.sidebarAction.open().then(() => {
-                    return new Promise(resolve => {setTimeout(resolve, 100)})
+                    return new Promise(resolve => { setTimeout(resolve, 100) })
                 }).finally(() => {
                     return browser.runtime.sendMessage({ mode: "edit", id: body })
                 })
@@ -175,6 +175,7 @@ window.addEventListener('load', async () => {
                 sortData()
                 changeSortAppearance()
                 setTable()
+                return browser.storage.local.set({ sort: currentSort })
             })
         }
     }
@@ -188,8 +189,10 @@ window.addEventListener('load', async () => {
         }
     }
 
+    const storage = await browser.storage.local.get();
+    currentSort = storage["sort"] || currentSort
     await reloadData()
-    sortData("year")
+    sortData()
     changeSortAppearance()
     setTable()
 
