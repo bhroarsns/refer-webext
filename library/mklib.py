@@ -47,6 +47,19 @@ def toJoined(arr):
             value += "0" + str(arr[i]) if arr[i] < 10 else str(arr[i])
     return value
 
+def formatLibrary(data, idType, value):
+    entry = {}
+    entry["date"] = data["date"]
+    entry["author"] = data["author"] if ("author" in data) else ""
+    entry["title"] = data["title"]
+    entry["journal"] = data["container-title"] if ("container-title") else ""
+    entry["library"] = idType + "/" + value
+    entry[idType] = value
+    entry["file"] = data["localfile"] if ("localfile" in data) else ""
+    entry["tag"] = data["tag"] if ("tag" in data) else []
+    entry["note"] = data["note"] if ("note" in data) else ""
+    return entry
+
 def parseLibrary(path):
     data = json.load(open(path))
     pathar = path.replace("./", "").replace(".json", "").split('/', 1)
@@ -54,18 +67,7 @@ def parseLibrary(path):
         data["date"] = publishedDate(data)
         with open(path, "w") as w:
             w.write(json.dumps(data, indent=4))
-    entry = {}
-    entry["published"] = data["date"]
-    entry["author"] = data["author"] if ("author" in data) else ""
-    entry["title"] = data["title"]
-    entry["journal"] = data["container-title"] if ("container-title") else ""
-    entry["type"] = pathar[0]
-    entry["value"] = pathar[1]
-    entry[pathar[0]] = pathar[1]
-    entry["file"] = data["localfile"] if ("localfile" in data) else ""
-    entry["tag"] = data["tag"] if ("tag" in data) else []
-    entry["note"] = data["note"] if ("note" in data) else ""
-    return entry
+    return pathar[0], pathar[1], formatLibrary(data, pathar[0], pathar[1])
 
 while True:
     data = getMessage()
@@ -81,21 +83,25 @@ while True:
                     if "content" in data:
                         w.write(json.dumps(data["content"], indent=4))
                         message += "Library of "+ t + ":" + v + " successfully updated."
-        with open("index.json", "w") as w:
-            body = []
-            for dir in os.scandir('.'):
-                if dir.is_dir():
-                    for root, _, files in os.walk(top=dir.path):
-                        for file in files:
-                            if file.endswith(".json") and file != "index.json":
-                                entry = parseLibrary(os.path.join(root, file))
-                                body.append(entry)
-            w.write(json.dumps(body, indent=4))
+                        curList = json.load(open("index.json"))
+                        curList[t + "/" + v] = formatLibrary(data["content"], t, v)
+                        with open("index.json", "w") as ind:
+                            ind.write(json.dumps(curList, indent=4))
+                        message += "</br>Index updated."
+        else:
+            with open("index.json", "w") as w:
+                body = {}
+                for dir in os.scandir('.'):
+                    if dir.is_dir():
+                        for root, _, files in os.walk(top=dir.path):
+                            for file in files:
+                                if file.endswith(".json") and file != "index.json":
+                                    idType, val, entry = parseLibrary(os.path.join(root, file))
+                                    body[idType + "/" + val] = entry
+                w.write(json.dumps(body, indent=4))
             if message != "":
                 message += "</br>"
-            message += "Index updated."
+            message += "Index refreshed."
         sendMessage(encodeMessage(message))
     except Exception as e:
-        # message = ""
-        # message += str(e)
         sendMessage(encodeMessage(str(e)))

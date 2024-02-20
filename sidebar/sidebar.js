@@ -191,10 +191,8 @@ window.addEventListener('load', async () => {
 })
 
 browser.runtime.onMessage.addListener(async (msg) => {
-    const focusedType = idField.set(msg, true);
-    console.log(focusedType)
     switchMode("lib")
-    await showLibrary(idField.show(focusedType));
+    await showLibrary(idField.show(idField.set(msg, true)));
 })
 
 libField.reset()

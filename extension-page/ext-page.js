@@ -1,3 +1,19 @@
+let data = []
+let heads = {}
+let currentSort = { key: "year", descend: false }
+let filters = {}
+
+function changeSortAppearance() {
+    Object.entries(heads).forEach(([key, node]) => {
+        if (key === currentSort.key) {
+            node.setAttribute("class", currentSort.descend ? "table-primary" : "table-danger")
+        } else {
+            node.setAttribute("class", "table-dark")
+        }
+    })
+    return;
+}
+
 function formatAuthor(entry) {
     if (entry["author"]) {
         if (entry["author"].length > 3) {
@@ -15,62 +31,165 @@ function formatAuthor(entry) {
     }
 }
 
-async function getIndex() {
+function currentFilter(entry) {
+    let show = true
+    for (const [key, filter] of Object.entries(filters)) {
+        const value = filter.value
+        if (show) {
+            if (value && value !== "") {
+                switch (key) {
+                    case "author":
+                        show = entry[key] && Array.isArray(entry[key]) && entry[key].map((aut) => { return aut["given"] + " " + aut["family"] }).join(", ").includes(value) ? true : false
+                        break;
+                    case "year":
+                        show = entry["date"] && String(entry["date"][0]).includes(value) ? true : false
+                        break;
+                    case "tag":
+                        show = entry[key] && value.split(",").every((v) => entry[key].includes(v)) ? true : false
+                        break;
+                    default:
+                        show = entry[key] && entry[key].includes(value) ? true : false
+                        break;
+                }
+            }
+        }
+    }
+    return show
+}
+
+function setTable() {
+    const content = document.getElementById("content");
+    content.innerHTML = ""
+    const display = data.filter((entry) => { return currentFilter(entry) })
+    for (let i = 0; i < display.length; i++) {
+        let div = content.appendChild(document.createElement("tr"))
+        div.setAttribute("id", display[i]["library"])
+        let author = div.appendChild(document.createElement("td"))
+        author.innerHTML = formatAuthor(display[i])
+        let date = div.appendChild(document.createElement("td"))
+        date.innerHTML = display[i]["date"] ? display[i]["date"][0] : ""
+        let title = div.appendChild(document.createElement("td"))
+        title.innerHTML = display[i]["title"] ? "<a href='" + browser.runtime.getURL("library/" + display[i]["library"] + ".json") + "' target='_blank' rel='noreferrer noopener'>" + display[i]["title"] + "</a>" : ""
+        let journal = div.appendChild(document.createElement("td"))
+        journal.innerHTML = display[i]["journal"] ? display[i]["journal"] : ""
+        let doi = div.appendChild(document.createElement("td"))
+        doi.innerHTML = display[i]["doi"] ? "<a href='https://doi.org/" + display[i]["doi"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["doi"] + "</a>" : ""
+        let arxiv = div.appendChild(document.createElement("td"))
+        arxiv.innerHTML = display[i]["arxiv"] ? "<a href='https://arxiv.org/abs/" + display[i]["arxiv"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["arxiv"] + "</a>" : ""
+        let file = div.appendChild(document.createElement("td"))
+        file.innerHTML = display[i]["file"] ? "<a href='" + browser.runtime.getURL("files/" + display[i]["file"]) + "' target='_blank' rel='noreferrer noopener'>" + display[i]["file"] + "</a>" : ""
+        let tag = div.appendChild(document.createElement("td"))
+        tag.innerHTML = display[i]["tag"] ? display[i]["tag"].join(", ") : ""
+        let note = div.appendChild(document.createElement("td"))
+        note.innerHTML = display[i]["note"] ? display[i]["note"].replace("\n", "</br>") : ""
+    }
+
+    for (const node of document.getElementById("content").childNodes) {
+        if (node.nodeType === 1 && node.tagName.toLowerCase() === "tr") {
+            const full = node.id;
+            const regex = full.match(/^[a-z]+?\//)
+            if (!regex) {
+                break;
+            }
+            const type = regex[0].replace("/", "")
+            const value = full.replace(regex[0], "")
+            node.addEventListener('click', () => {
+                let body = {}
+                body[type] = value;
+                browser.runtime.sendMessage(body)
+            })
+        }
+    }
+    return;
+}
+
+async function reloadData() {
     const response = await fetch(browser.runtime.getURL("library/index.json"));
-    const data = await response.json();
+    data = await response.json().then((body) => {
+        return Object.values(body)
+    });
+    return;
+}
+
+function generateSortKey(obj, key) {
+    switch (key) {
+        case "year":
+            let date = obj["date"]
+            for (let i = 0; i < 3 - date.length; i++) {
+                date.push(0)
+            }
+            return "" + date[0] + (date[1] > 10 ? date[1] : "0" + date[1]) + (date[2] > 10 ? date[2] : "0" + date[2]);
+        case "author":
+            let author = obj["author"]
+            if (author && Array.isArray(author) && author.length > 0) {
+                return author[0]["family"]
+            } else {
+                return ""
+            }
+        default:
+            return obj[key] ? obj[key] : "";
+    }
+}
+
+function sortData() {
     data.sort((a, b) => {
-        let aDate = a["published"]
-        let bDate = b["published"]
-        for (let i = 0; i < 3 - aDate.length; i++) {
-            aDate.push(0)
-        }
-        for (let i = 0; i < 3 - bDate.length; i++) {
-            bDate.push(0)
-        }
-        const aStr = "" + aDate[0] + (aDate[1] > 10 ? aDate[1] : "0" + aDate[1]) + (aDate[2] > 10 ? aDate[2] : "0" + aDate[2])
-        const bStr = "" + bDate[0] + (bDate[1] > 10 ? bDate[1] : "0" + bDate[1]) + (bDate[2] > 10 ? bDate[2] : "0" + bDate[2])
-        if (aStr < bStr) {
+        const aKey = generateSortKey(a, currentSort.key)
+        const bKey = generateSortKey(b, currentSort.key)
+        if (aKey < bKey) {
+            if (currentSort.descend) {
+                return 1
+            }
             return -1
-        } else if (aStr > bStr) {
+        } else if (aKey > bKey) {
+            if (currentSort.descend) {
+                return -1
+            }
             return 1
         } else {
             return 0
         }
     })
-    for (let i = 0; i < data.length; i++) {
-        let div = document.getElementById("content").appendChild(document.createElement("tr"))
-        div.setAttribute("id", data[i]["type"] + ":" + data[i]["value"])
-        let author = div.appendChild(document.createElement("td"))
-        author.innerHTML = formatAuthor(data[i])
-        let date = div.appendChild(document.createElement("td"))
-        date.innerHTML = data[i]["published"] ? data[i]["published"][0] : ""
-        let title = div.appendChild(document.createElement("td"))
-        title.innerHTML = data[i]["title"] ? data[i]["title"] : ""
-        let journal = div.appendChild(document.createElement("td"))
-        journal.innerHTML = data[i]["journal"] ? data[i]["journal"] : ""
-        let doi = div.appendChild(document.createElement("td"))
-        doi.innerHTML = data[i]["doi"] ? "<a href='https://doi.org/" + data[i]["doi"] + "' target='_blank' rel='noreferrer noopener'>" + data[i]["doi"] + "</a>" : ""
-        let arxiv = div.appendChild(document.createElement("td"))
-        arxiv.innerHTML = data[i]["arxiv"] ? "<a href='https://arxiv.org/abs/" + data[i]["arxiv"] + "' target='_blank' rel='noreferrer noopener'>" + data[i]["arxiv"] + "</a>" : ""
-        let file = div.appendChild(document.createElement("td"))
-        file.innerHTML = data[i]["file"] ? "<a href='" + browser.runtime.getURL("files/" + data[i]["file"]) + "' target='_blank' rel='noreferrer noopener'>" + data[i]["file"] + "</a>" : ""
-        let tag = div.appendChild(document.createElement("td"))
-        tag.innerHTML = data[i]["tag"] ? data[i]["tag"].join(", ") : ""
-        let note = div.appendChild(document.createElement("td"))
-        note.innerHTML = data[i]["note"] ? data[i]["note"].replace("\n", "</br>") : ""
-    }
+    return;
 }
 
 window.addEventListener('load', async () => {
-    const response = await fetch(browser.runtime.getURL("library/index.json"));
-    const data = await response.json();
-    for (let i = 0; i < data.length; i++) {
-        document.getElementById(data[i]["type"] + ":" + data[i]["value"]).addEventListener('click', () => {
-            let body = {}
-            body[data[i]["type"]] = data[i]["value"];
-            browser.runtime.sendMessage(body)
-        })
+    for (const node of document.getElementById("table-head").childNodes) {
+        if (node.nodeType === 1 && node.tagName.toLowerCase() === "th") {
+            const headKey = node.id.replace("-head", "")
+            heads[headKey] = node
+            node.addEventListener('click', () => {
+                if (currentSort.key === headKey) {
+                    currentSort.descend = !currentSort.descend
+                } else {
+                    currentSort.descend = false
+                }
+                currentSort.key = headKey
+                sortData()
+                changeSortAppearance()
+                setTable()
+            })
+        }
     }
-})
 
-getIndex()
+    for (const node of document.getElementById("filters").childNodes) {
+        if (node.nodeType === 1 && node.tagName.toLowerCase() === "th") {
+            const filter = node.firstChild;
+            const filterKey = filter.id.replace("-filter", "")
+            filters[filterKey] = filter
+            filter.addEventListener('change', () => { setTable() })
+        }
+    }
+
+    await reloadData()
+    sortData("year")
+    changeSortAppearance()
+    setTable()
+
+    document.getElementById("refresh").addEventListener('click', async () => {
+        const msg = await browser.runtime.sendNativeMessage("refer_mklib", {})
+        document.getElementById("refresh-log").innerHTML = msg
+        await reloadData();
+        sortData()
+        setTable()
+    })
+})
