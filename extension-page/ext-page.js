@@ -93,7 +93,7 @@ function setTable() {
             const full = node.id;
             const regex = full.match(/^[a-z]+?\//)
             if (!regex) {
-                break;
+                continue;
             }
             const type = regex[0].replace("/", "")
             const value = full.replace(regex[0], "")
