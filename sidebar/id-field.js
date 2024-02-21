@@ -6,10 +6,8 @@ class IdFieldManager {
     idOptions = [];
     constructor() {
         this.selector = document.getElementById("id-type");
-        for (const node of document.getElementById("id-fields").childNodes) {
-            if (node.nodeType === 1) {
-                this.fields[node.id.replace("id-", "")] = node;
-            }
+        for (const node of document.getElementById("id-fields").children) {
+            this.fields[node.id.replace("id-", "")] = node;
         }
         for (const opt of this.selector.options) {
             this.idOptions.push(opt.value)

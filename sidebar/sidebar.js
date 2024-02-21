@@ -190,7 +190,9 @@ window.addEventListener('load', async () => {
         await editField.saveChange(idField.currentId);
     })
     document.getElementById("delete-cache").addEventListener('click', async () => {
+        const sort = await browser.storage.local.get().then((data) => { return data["sort"]; });
         await browser.storage.local.clear();
+        await browser.storage.local.set({ "sort": sort });
         await showLibrary(idField.currentId);
     })
 })
@@ -203,13 +205,15 @@ browser.runtime.onMessage.addListener(async (msg) => {
 libField.reset()
 editField.reset()
 
-for (const container of document.getElementById("containers").childNodes) {
-    if (container.nodeType === 1 && container.tagName.toLowerCase() === "div") {
+for (const container of document.getElementById("containers").children) {
+    if (container.tagName.toLowerCase() === "div") {
         containers[container.id.replace("-container", "")] = container
     }
 }
 
 switchMode(mode)
+const sort = await browser.storage.local.get().then((data) => { return data["sort"]; });
 await browser.storage.local.clear();
+await browser.storage.local.set({ "sort": sort });
 let curTab = await browser.tabs.query({ currentWindow: true, active: true });
 await loadTab(curTab[0].id);

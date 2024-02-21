@@ -54,7 +54,7 @@ async function redirectId(id) {
 }
 
 async function redirectDoi(details) {
-    if (details.requestHeaders.find((header) => header.name === "Accept" && header.value === "application/vnd.citationstyles.csl+json")) {
+    if (details.requestHeaders.find((header) => header.name.toLowerCase() === "user-agent" && header.value === "refer-webext")) {
         return;
     }
     const doi = details.url.replace("https://doi.org/", "").replace("https://dx.doi.org/", "");

@@ -13,8 +13,8 @@ class LibFieldManager {
     fields = {};
     logger;
     constructor() {
-        for (const node of document.getElementById("lib-fields").childNodes) {
-            if (node.nodeType === 1 && node.tagName.toLowerCase() === "dd") {
+        for (const node of document.getElementById("lib-fields").children) {
+            if (node.tagName.toLowerCase() === "dd") {
                 this.fields[node.id.replace("lib-", "")] = node
             }
         }

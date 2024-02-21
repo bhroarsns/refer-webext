@@ -56,12 +56,14 @@
                     </div>
                 </div>
                 <dl class="card-body" id="lib-fields">
+                    <dt>Author</dt>
+                    <dd id="lib-author"></dd>
                     <dt>Date</dt>
                     <dd id="lib-date"></dd>
                     <dt>Title</dt>
                     <dd id="lib-title"></dd>
-                    <dt>Author</dt>
-                    <dd id="lib-author"></dd>
+                    <dt>Abstract</dt>
+                    <dd id="lib-abstract"></dd>
                     <dt>Journal</dt>
                     <dd id="lib-journal"></dd>
                     <dt>Volume</dt>
@@ -70,6 +72,8 @@
                     <dd id="lib-issue"></dd>
                     <dt>Number</dt>
                     <dd id="lib-number"></dd>
+                    <dt>arXiv ID</dt>
+                    <dd id="lib-arxiv"></dd>
                     <dt>Tag</dt>
                     <dd id="lib-tag"></dd>
                     <dt>Note</dt>
@@ -98,6 +102,10 @@
                 </div>
                 <div class="card-body">
                     <dl id="edit-fields">
+                        <dt id="edit-author-head">Author</dt>
+                        <dd>
+                            <textarea class="form-control" id="edit-author"></textarea>
+                        </dd>
                         <dt id="edit-date-head">Date</dt>
                         <dd>
                             <input class="form-control" type="date" id="edit-date" />
@@ -106,9 +114,9 @@
                         <dd>
                             <input class="form-control" type="text" id="edit-title" />
                         </dd>
-                        <dt id="edit-author-head">Author</dt>
+                        <dt id="edit-abstract-head">Abstract</dt>
                         <dd>
-                            <textarea class="form-control" id="edit-author"></textarea>
+                            <textarea class="form-control" id="edit-abstract"></textarea>
                         </dd>
                         <dt id="edit-journal-head">Journal</dt>
                         <dd>
@@ -125,6 +133,10 @@
                         <dt id="edit-number-head">Number</dt>
                         <dd>
                             <input class="form-control" type="text" id="edit-number" />
+                        </dd>
+                        <dt id="edit-arxiv-head">arXiv ID</dt>
+                        <dd>
+                            <input class="form-control" type="text" id="edit-arxiv" />
                         </dd>
                         <dt id="edit-tag-head">Tag</dt>
                         <dd>

@@ -15,7 +15,7 @@ function namingConvention(
 ) {
     return (journalAbbr ? journalAbbr.replaceAll(".", "").replaceAll(" ", "") + "." : (journal ? journal.replaceAll(".", "").replaceAll(" ", "") + "." : ""))
         + (volume ? volume + "." : "")
-        + (pages ? pages.split("-")[0] + "." : (articleNumber ? articleNumber + "." : ""))
+        + (pages ? pages.split("-")[0] + "." : (articleNumber ? articleNumber.replace("/", ".") + "." : ""))
         + "pdf"
 }
 

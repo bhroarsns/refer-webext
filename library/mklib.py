@@ -51,13 +51,27 @@ def formatLibrary(data, idType, value):
     entry = {}
     entry["date"] = data["date"]
     entry["author"] = data["author"] if ("author" in data) else ""
-    entry["title"] = data["title"]
-    entry["journal"] = data["container-title"] if ("container-title") else ""
+    entry["title"] = data["title"] if ("title" in data) else ""
+    entry["abstract"] = data["abstract"] if ("abstract" in data) else ""
+    entry["journal"] = data["container-title"] if ("container-title" in data) else ""
     entry["library"] = idType + "/" + value
     entry[idType] = value
     entry["file"] = data["localfile"] if ("localfile" in data) else ""
     entry["tag"] = data["tag"] if ("tag" in data) else []
     entry["note"] = data["note"] if ("note" in data) else ""
+    if idType == "doi" and "arxiv" in data and data["arxiv"] != "":
+        arxiv = data["arxiv"]
+        entry["arxiv"] = arxiv
+        arxivfile = "arxiv/"+arxiv+".json"
+        redirect = json.load(open(arxivfile)) if os.path.isfile(arxivfile) else {}
+        redirect["redirect"] = "doi/" + value
+        redirect["doi"] = value
+        if "localfile" in data:
+            redirect["localfile"] = data["localfile"]
+        if not os.path.isdir(os.path.dirname(arxivfile)):
+            os.makedirs(os.path.dirname(arxivfile))
+        with open(arxivfile, "w") as w:
+            w.write(json.dumps(redirect, indent=4))
     return entry
 
 def parseLibrary(path):
@@ -67,7 +81,17 @@ def parseLibrary(path):
         data["date"] = publishedDate(data)
         with open(path, "w") as w:
             w.write(json.dumps(data, indent=4))
-    return pathar[0], pathar[1], formatLibrary(data, pathar[0], pathar[1])
+    if "redirect" in data:
+        redir = json.load(open(data["redirect"]+".json"))
+        if "arxiv" in redir:
+            if redir["arxiv"] == pathar[1]:
+                return None, None, None
+        del data["redirect"]
+        with open(path, "w") as w:
+            w.write(json.dumps(data, indent=4))
+        return pathar[0], pathar[1], formatLibrary(data, pathar[0], pathar[1])
+    else:
+        return pathar[0], pathar[1], formatLibrary(data, pathar[0], pathar[1])
 
 while True:
     data = getMessage()
@@ -77,30 +101,29 @@ while True:
             t = data["type"]
             if "value" in data:
                 v = data["value"]
-                if not os.path.isdir(os.path.dirname(t+"/"+v+".json")):
-                    os.makedirs(os.path.dirname(t+"/"+v+".json"))
-                with open(t+"/"+v+".json", "w") as w:
-                    if "content" in data:
+                if "content" in data:
+                    if not os.path.isdir(os.path.dirname(t+"/"+v+".json")):
+                        os.makedirs(os.path.dirname(t+"/"+v+".json"))
+                    with open(t+"/"+v+".json", "w") as w:
                         w.write(json.dumps(data["content"], indent=4))
-                        message += "Library of "+ t + ":" + v + " successfully updated."
-                        curList = json.load(open("index.json"))
-                        curList[t + "/" + v] = formatLibrary(data["content"], t, v)
-                        with open("index.json", "w") as ind:
-                            ind.write(json.dumps(curList, indent=4))
-                        message += "</br>Index updated."
+                    message += "Library of "+ t + ":" + v + " successfully updated."
+                    curList = json.load(open("index.json"))
+                    curList[t + "/" + v] = formatLibrary(data["content"], t, v)
+                    with open("index.json", "w") as ind:
+                        ind.write(json.dumps(curList, indent=4))
+                    message += "</br>Index updated."
         else:
-            with open("index.json", "w") as w:
-                body = {}
-                for dir in os.scandir('.'):
-                    if dir.is_dir():
-                        for root, _, files in os.walk(top=dir.path):
-                            for file in files:
-                                if file.endswith(".json") and file != "index.json":
-                                    idType, val, entry = parseLibrary(os.path.join(root, file))
+            body = {}
+            for dir in os.scandir('.'):
+                if dir.is_dir():
+                    for root, _, files in os.walk(top=dir.path):
+                        for file in files:
+                            if file.endswith(".json") and file != "index.json":
+                                idType, val, entry = parseLibrary(os.path.join(root, file))
+                                if not entry is None:
                                     body[idType + "/" + val] = entry
+            with open("index.json", "w") as w:
                 w.write(json.dumps(body, indent=4))
-            if message != "":
-                message += "</br>"
             message += "Index refreshed."
         sendMessage(encodeMessage(message))
     except Exception as e:

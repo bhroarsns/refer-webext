@@ -74,6 +74,8 @@ function setTable() {
         date.innerHTML = display[i]["date"] ? display[i]["date"][0] : ""
         let title = div.appendChild(document.createElement("td"))
         title.innerHTML = display[i]["title"] ? "<a href='" + browser.runtime.getURL("library/" + display[i]["library"] + ".json") + "' target='_blank' rel='noreferrer noopener'>" + display[i]["title"] + "</a>" : ""
+        let abstract = div.appendChild(document.createElement("td"))
+        abstract.innerHTML = display[i]["abstract"] ? (display[i]["abstract"].length > 100 ? display[i]["abstract"].slice(0, 100) + "..." : display[i]["abstract"].slice(0, 100)) : ""
         let journal = div.appendChild(document.createElement("td"))
         journal.innerHTML = display[i]["journal"] ? display[i]["journal"] : ""
         let doi = div.appendChild(document.createElement("td"))
@@ -88,8 +90,8 @@ function setTable() {
         note.innerHTML = display[i]["note"] ? display[i]["note"].replace("\n", "</br>") : ""
     }
 
-    for (const node of document.getElementById("content").childNodes) {
-        if (node.nodeType === 1 && node.tagName.toLowerCase() === "tr") {
+    for (const node of document.getElementById("content").children) {
+        if (node.tagName.toLowerCase() === "tr") {
             const full = node.id;
             const regex = full.match(/^[a-z]+?\//)
             if (!regex) {
@@ -161,8 +163,8 @@ function sortData() {
 }
 
 window.addEventListener('load', async () => {
-    for (const node of document.getElementById("table-head").childNodes) {
-        if (node.nodeType === 1 && node.tagName.toLowerCase() === "th") {
+    for (const node of document.getElementById("table-head").children) {
+        if (node.tagName.toLowerCase() === "th") {
             const headKey = node.id.replace("-head", "")
             heads[headKey] = node
             node.addEventListener('click', () => {
@@ -180,8 +182,8 @@ window.addEventListener('load', async () => {
         }
     }
 
-    for (const node of document.getElementById("filters").childNodes) {
-        if (node.nodeType === 1 && node.tagName.toLowerCase() === "th") {
+    for (const node of document.getElementById("filters").children) {
+        if (node.tagName.toLowerCase() === "th") {
             const filter = node.firstChild;
             const filterKey = filter.id.replace("-filter", "")
             filters[filterKey] = filter
