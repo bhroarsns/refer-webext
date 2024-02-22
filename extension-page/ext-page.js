@@ -206,3 +206,11 @@ window.addEventListener('load', async () => {
         setTable()
     })
 })
+
+browser.runtime.onMessage.addListener(async (msg) => {
+    if (msg === "reload") {
+        const curTab = await browser.tabs.query({ currentWindow: true, active: true });
+        console.log(curTab)
+        await browser.tabs.reload(curTab[0].id)
+    }
+})

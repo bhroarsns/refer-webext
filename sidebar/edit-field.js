@@ -2,7 +2,7 @@ import { authorStr, confirmPromise, formatFileLink, formatFilename, formatString
 import { getCache, updateCache } from "./cache.js";
 import { httpRequest, queryArxivAPI } from "./http.js";
 import { parseArxivEntry, queryElementAttribute } from "./dom-query.js";
-import { executeTabQuery } from "./tabs.js";
+import { executeTabQuery, getCurrentTabId } from "./tabs.js";
 import { searchLibrary } from "./library.js";
 import { getAccessibleStorageURL } from "./storage.js";
 
@@ -21,6 +21,7 @@ async function getAbstractFromLink(links) {
 
 async function getAbstractFromHtmlResponse(doi) {
     const page = await httpRequest("doi", doi, "html");
+    console.debug(page.head.children)
     return await queryElementAttribute(page.head, "abstract", "content");
 }
 
@@ -31,8 +32,11 @@ async function extractArxivId(dom, givenTitle) {
     }
     await confirmPromise(
         "arXiv ID " + arxiv + " found, but its title seems to be different from original one.\n"
+        + "\n"
         + title.replaceAll(/\s+/g, " ") + "\n"
+        + "\n"
         + (givenTitle ? givenTitle.replaceAll(/\s+/g, " ") : "(No title given)") + "\n"
+        + "\n"
         + "Are you sure to relate this arXiv ID with this reference?",
         new Error("This arXiv ID denied by user.")
     );
@@ -297,7 +301,7 @@ class EditFieldManager {
             if (id.type === "doi") {
                 data = await this.getFromDoi(id.value);
             } else if (id.type === "arxiv") {
-                data = parseArxivEntry(await queryArxivAPI("id_list", arxiv));
+                data = parseArxivEntry(await queryArxivAPI("id_list", [id.value]));
             } else {
                 throw new Error("No valid ID type given.");
             }
@@ -368,6 +372,11 @@ class EditFieldManager {
             "content": content
         })
         this.log(msg)
+        try {
+            browser.tabs.sendMessage(await getCurrentTabId(), "reload")
+        } catch (e) {
+            console.warn(e)
+        }
         return;
     }
 }

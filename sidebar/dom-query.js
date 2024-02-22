@@ -51,6 +51,7 @@ function formatValue(key, node) {
         case "category":
             return node.getAttribute("term");
         case "date":
+            return node.innerHTML.slice(0, 10).split("-").map((str) => { return Number(str) })
         case "updated":
             return { "date-parts": [node.innerHTML.slice(0, 10).split("-").map((str) => { return Number(str) })] }
         case "arxiv":

@@ -68,6 +68,9 @@ def formatLibrary(data, idType, value):
         redirect["doi"] = value
         if "localfile" in data:
             redirect["localfile"] = data["localfile"]
+        else:
+            if "localfile" in redirect:
+                entry["file"] = redirect["localfile"]
         if not os.path.isdir(os.path.dirname(arxivfile)):
             os.makedirs(os.path.dirname(arxivfile))
         with open(arxivfile, "w") as w:
