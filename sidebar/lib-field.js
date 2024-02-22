@@ -1,6 +1,48 @@
 import { authorStr, formatFileLink, formatString, setValue } from "./util.js"
 import { searchLibrary } from "./library.js"
 import { getAccessibleStorageURL } from "./storage.js";
+import { getCurrentTabId } from "./tabs.js";
+
+async function getContent(key, input) {
+    switch (key) {
+        case "author":
+            if (input[key] && Array.isArray(input[key])) {
+                return input[key].map((aut) => { return { link: aut["given"][0] + ", " + aut["family"], text: authorStr(aut) } });
+            } else {
+                return [];
+            }
+        case "date":
+            if (Array.isArray(input[key])) {
+                return formatString(input[key], (array) => { return array.join("-") });
+            }
+        case "journal":
+            return formatString(input["container-title"]);
+        case "number":
+            return formatString(input['page'] || input['article-number']);
+        case "file":
+            if (input['localfile']) {
+                const filename = input['localfile']
+                try {
+                    const url = await getAccessibleStorageURL(filename);
+                    if (url) {
+                        return formatFileLink(url, filename);
+                    } else {
+                        return filename;
+                    }
+                } catch {
+                    return filename;
+                }
+            }
+        case "tag":
+            if (input[key] && Array.isArray(input[key])) {
+                return input[key].map((tag) => { return { link: tag, text: tag } });
+            } else {
+                return [];
+            }
+        default:
+            return formatString(input[key]);
+    }
+}
 
 class LibFieldManager {
     fields = {};
@@ -44,44 +86,34 @@ class LibFieldManager {
             return;
         }
         for (const key of Object.keys(this.fields)) {
-            let valueText = ""
+            const content = await getContent(key, input);
             switch (key) {
                 case "author":
-                    valueText = formatString(input[key], (array) => { return array.map((elem) => { return authorStr(elem) }).join('</br>') })
-                    break;
-                case "date":
-                    if (Array.isArray(input[key])) {
-                        valueText = formatString(input[key], (array) => { return array.join("-") })
-                    }
-                    break;
-                case "journal":
-                    valueText = formatString(input["container-title"])
-                    break;
-                case "number":
-                    valueText = formatString(input['page'] || input['article-number'])
-                    break;
-                case "file":
-                    if (input['localfile']) {
-                        const filename = input['localfile']
-                        try {
-                            const url = await getAccessibleStorageURL(filename)
-                            if (url) {
-                                valueText = formatFileLink(url, filename);
-                            } else {
-                                valueText = filename;
-                            }
-                        } catch {
-                            valueText = filename;
-                        }
-                    }
-                    break;
                 case "tag":
-                    valueText = formatString(input[key], (array) => { return array.join("</br>") })
+                    for (const value of content) {
+                        const link = this.fields[key].appendChild(document.createElement("a"));
+                        link.innerHTML = value["text"]
+                        link.setAttribute("class", "link")
+                        link.addEventListener('click', async () => {
+                            try {
+                                await browser.tabs.sendMessage(await getCurrentTabId(), { method: "fill", key: key, value: value["link"] });
+                            } catch {
+                                await browser.tabs.create({ url: browser.runtime.getURL("extension-page/index.html") }).then(() => {
+                                    return new Promise(resolve => { return setTimeout(resolve, 100) });
+                                }).then(() => {
+                                    return getCurrentTabId()
+                                }).then((tabId) => {
+                                    console.log(tabId)
+                                    return browser.tabs.sendMessage(tabId, { method: "fill", key: key, value: value["link"] });
+                                })
+                            }
+                        })
+                        this.fields[key].appendChild(document.createElement("br"));
+                    }
                     break;
                 default:
-                    valueText = formatString(input[key])
+                    setValue(this.fields[key], content)
             }
-            setValue(this.fields[key], valueText)
         }
         return;
     }

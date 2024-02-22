@@ -373,7 +373,7 @@ class EditFieldManager {
         })
         this.log(msg)
         try {
-            browser.tabs.sendMessage(await getCurrentTabId(), "reload")
+            browser.tabs.sendMessage(await getCurrentTabId(), { method: "reload" })
         } catch (e) {
             console.warn(e)
         }

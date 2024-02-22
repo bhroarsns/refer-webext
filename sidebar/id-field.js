@@ -39,7 +39,7 @@ class IdFieldManager {
         }
 
         for (let i = 0; i < this.idOptions.length; i++) {
-            if (keys.includes(this.idOptions[i])) {
+            if (allId[this.idOptions[i]]) {
                 setValue(this.selector, this.idOptions[i])
                 return this.idOptions[i]
             }

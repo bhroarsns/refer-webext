@@ -66,49 +66,41 @@ function setTable() {
     content.innerHTML = ""
     const display = data.filter((entry) => { return currentFilter(entry) })
     for (let i = 0; i < display.length; i++) {
-        let div = content.appendChild(document.createElement("tr"))
-        div.setAttribute("id", display[i]["library"])
-        let author = div.appendChild(document.createElement("td"))
-        author.innerHTML = formatAuthor(display[i])
-        let date = div.appendChild(document.createElement("td"))
-        date.innerHTML = display[i]["date"] ? display[i]["date"][0] : ""
-        let title = div.appendChild(document.createElement("td"))
-        title.innerHTML = display[i]["title"] ? "<a href='" + browser.runtime.getURL("library/" + display[i]["library"] + ".json") + "' target='_blank' rel='noreferrer noopener'>" + display[i]["title"] + "</a>" : ""
-        let abstract = div.appendChild(document.createElement("td"))
-        abstract.innerHTML = display[i]["abstract"] ? (display[i]["abstract"].length > 100 ? display[i]["abstract"].slice(0, 100) + "..." : display[i]["abstract"].slice(0, 100)) : ""
-        let journal = div.appendChild(document.createElement("td"))
-        journal.innerHTML = display[i]["journal"] ? display[i]["journal"] : ""
-        let doi = div.appendChild(document.createElement("td"))
-        doi.innerHTML = display[i]["doi"] ? "<a href='https://doi.org/" + display[i]["doi"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["doi"] + "</a>" : ""
-        let arxiv = div.appendChild(document.createElement("td"))
-        arxiv.innerHTML = display[i]["arxiv"] ? "<a href='https://arxiv.org/abs/" + display[i]["arxiv"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["arxiv"] + "</a>" : ""
-        let file = div.appendChild(document.createElement("td"))
-        file.innerHTML = display[i]["file"] ? "<a href='" + browser.runtime.getURL("files/" + display[i]["file"]) + "' target='_blank' rel='noreferrer noopener'>" + display[i]["file"] + "</a>" : ""
-        let tag = div.appendChild(document.createElement("td"))
-        tag.innerHTML = display[i]["tag"] ? display[i]["tag"].join(", ") : ""
-        let note = div.appendChild(document.createElement("td"))
-        note.innerHTML = display[i]["note"] ? display[i]["note"].replace("\n", "</br>") : ""
-    }
-
-    for (const node of document.getElementById("content").children) {
-        if (node.tagName.toLowerCase() === "tr") {
-            const full = node.id;
-            const regex = full.match(/^[a-z]+?\//)
-            if (!regex) {
-                continue;
-            }
-            const type = regex[0].replace("/", "")
-            const value = full.replace(regex[0], "")
-            node.addEventListener('click', async () => {
-                let body = {}
-                body[type] = value;
-                await browser.sidebarAction.open().then(() => {
-                    return new Promise(resolve => { setTimeout(resolve, 100) })
-                }).finally(() => {
-                    return browser.runtime.sendMessage({ mode: "edit", id: body })
+        let row = content.appendChild(document.createElement("tr"))
+        row.setAttribute("id", display[i]["library"])
+        row.addEventListener('click', async () => {
+            await browser.sidebarAction.open().then(() => {
+                return new Promise(resolve => { return setTimeout(resolve, 100) })
+            }).finally(() => {
+                return browser.runtime.sendMessage({
+                    id: {
+                        "doi": display[i]["doi"] || "",
+                        "arxiv": display[i]["arxiv"] || "",
+                        "url": display[i]["url"] || ""
+                    }
                 })
             })
-        }
+        })
+        let author = row.appendChild(document.createElement("td"))
+        author.innerHTML = formatAuthor(display[i])
+        let date = row.appendChild(document.createElement("td"))
+        date.innerHTML = display[i]["date"] ? display[i]["date"][0] : ""
+        let title = row.appendChild(document.createElement("td"))
+        title.innerHTML = display[i]["title"] ? "<a href='" + browser.runtime.getURL("library/" + display[i]["library"] + ".json") + "' target='_blank' rel='noreferrer noopener'>" + display[i]["title"] + "</a>" : ""
+        let abstract = row.appendChild(document.createElement("td"))
+        abstract.innerHTML = display[i]["abstract"] ? (display[i]["abstract"].length > 100 ? display[i]["abstract"].slice(0, 100) + "..." : display[i]["abstract"].slice(0, 100)) : ""
+        let journal = row.appendChild(document.createElement("td"))
+        journal.innerHTML = display[i]["journal"] ? display[i]["journal"] : ""
+        let doi = row.appendChild(document.createElement("td"))
+        doi.innerHTML = display[i]["doi"] ? "<a href='https://doi.org/" + display[i]["doi"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["doi"] + "</a>" : ""
+        let arxiv = row.appendChild(document.createElement("td"))
+        arxiv.innerHTML = display[i]["arxiv"] ? "<a href='https://arxiv.org/abs/" + display[i]["arxiv"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["arxiv"] + "</a>" : ""
+        let file = row.appendChild(document.createElement("td"))
+        file.innerHTML = display[i]["file"] ? "<a href='" + browser.runtime.getURL("files/" + display[i]["file"]) + "' target='_blank' rel='noreferrer noopener'>" + display[i]["file"] + "</a>" : ""
+        let tag = row.appendChild(document.createElement("td"))
+        tag.innerHTML = display[i]["tag"] ? display[i]["tag"].join(", ") : ""
+        let note = row.appendChild(document.createElement("td"))
+        note.innerHTML = display[i]["note"] ? display[i]["note"].replace("\n", "</br>") : ""
     }
     return;
 }
@@ -162,32 +154,40 @@ function sortData() {
     return;
 }
 
+function resetFilter() {
+    Object.values(filters).forEach((filter) => { filter.value = "" });
+}
+
 window.addEventListener('load', async () => {
     for (const node of document.getElementById("table-head").children) {
         if (node.tagName.toLowerCase() === "th") {
-            const headKey = node.id.replace("-head", "")
-            heads[headKey] = node
-            node.addEventListener('click', () => {
-                if (currentSort.key === headKey) {
-                    currentSort.descend = !currentSort.descend
-                } else {
-                    currentSort.descend = false
-                }
-                currentSort.key = headKey
-                sortData()
-                changeSortAppearance()
-                setTable()
-                return browser.storage.local.set({ sort: currentSort })
-            })
+            if (node.id && node.id.endsWith("-head")) {
+                const headKey = node.id.replace("-head", "")
+                heads[headKey] = node
+                node.addEventListener('click', () => {
+                    if (currentSort.key === headKey) {
+                        currentSort.descend = !currentSort.descend
+                    } else {
+                        currentSort.descend = false
+                    }
+                    currentSort.key = headKey
+                    sortData()
+                    changeSortAppearance()
+                    setTable()
+                    return browser.storage.local.set({ sort: currentSort })
+                })
+            }
         }
     }
 
     for (const node of document.getElementById("filters").children) {
         if (node.tagName.toLowerCase() === "th") {
             const filter = node.firstChild;
-            const filterKey = filter.id.replace("-filter", "")
-            filters[filterKey] = filter
-            filter.addEventListener('change', () => { setTable() })
+            if (filter.id && filter.id.endsWith("-filter")) {
+                const filterKey = filter.id.replace("-filter", "")
+                filters[filterKey] = filter
+                filter.addEventListener('change', () => { setTable() })
+            }
         }
     }
 
@@ -205,12 +205,23 @@ window.addEventListener('load', async () => {
         sortData()
         setTable()
     })
+
+    document.getElementById("reset").addEventListener('click', () => { resetFilter(); setTable(); })
 })
 
 browser.runtime.onMessage.addListener(async (msg) => {
-    if (msg === "reload") {
-        const curTab = await browser.tabs.query({ currentWindow: true, active: true });
-        console.log(curTab)
-        await browser.tabs.reload(curTab[0].id)
+    if (msg) {
+        switch (msg["method"]) {
+            case "reload":
+                await reloadData();
+                sortData()
+                setTable()
+                break;
+            case "fill":
+                resetFilter();
+                filters[msg["key"]].value = msg["value"]
+                setTable()
+                break;
+        }
     }
 })
