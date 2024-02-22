@@ -101,17 +101,28 @@ while True:
             t = data["type"]
             if "value" in data:
                 v = data["value"]
+                filename = t+"/"+v+".json"
                 if "content" in data:
-                    if not os.path.isdir(os.path.dirname(t+"/"+v+".json")):
-                        os.makedirs(os.path.dirname(t+"/"+v+".json"))
-                    with open(t+"/"+v+".json", "w") as w:
-                        w.write(json.dumps(data["content"], indent=4))
-                    message += "Library of "+ t + ":" + v + " successfully updated."
-                    curList = json.load(open("index.json"))
-                    curList[t + "/" + v] = formatLibrary(data["content"], t, v)
-                    with open("index.json", "w") as ind:
-                        ind.write(json.dumps(curList, indent=4))
-                    message += "</br>Index updated."
+                    if data["content"] == "delete":
+                        if os.path.isfile(filename):
+                            os.remove(filename)
+                        message += "Library of "+ t + ":" + v + " successfully deleted."
+                        curList = json.load(open("index.json"))
+                        del curList[t + "/" + v]
+                        with open("index.json", "w") as ind:
+                            ind.write(json.dumps(curList, indent=4))
+                        message += "</br>Index updated."
+                    else:
+                        if not os.path.isdir(os.path.dirname(filename)):
+                            os.makedirs(os.path.dirname(filename))
+                        with open(filename, "w") as w:
+                            w.write(json.dumps(data["content"], indent=4))
+                        message += "Library of "+ t + ":" + v + " successfully updated."
+                        curList = json.load(open("index.json"))
+                        curList[t + "/" + v] = formatLibrary(data["content"], t, v)
+                        with open("index.json", "w") as ind:
+                            ind.write(json.dumps(curList, indent=4))
+                        message += "</br>Index updated."
         else:
             body = {}
             for dir in os.scandir('.'):

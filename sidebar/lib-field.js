@@ -1,13 +1,6 @@
-import {
-    formatFileLink,
-    formatString,
-    isAccessibleFile,
-    setValue
-} from "./util.js"
-
-import {
-    searchLibrary
-} from "./library.js"
+import { authorStr, formatFileLink, formatString, setValue } from "./util.js"
+import { searchLibrary } from "./library.js"
+import { getAccessibleStorageURL } from "./storage.js";
 
 class LibFieldManager {
     fields = {};
@@ -40,7 +33,8 @@ class LibFieldManager {
         await searchLibrary(id).then(async (data) => {
             this.log("Found in the local library.")
             return this.fill(data)
-        }).catch(() => {
+        }).catch((e) => {
+            console.warn(e)
             this.log("Not found in the local library.")
         })
     }
@@ -49,56 +43,45 @@ class LibFieldManager {
         if (!input) {
             return;
         }
-
         for (const key of Object.keys(this.fields)) {
+            let valueText = ""
             switch (key) {
                 case "author":
-                    setValue(
-                        this.fields[key],
-                        formatString(
-                            input['author'],
-                            (array) => {
-                                return array.map((elem) => { return elem['given'] + ' ' + elem['family'] }).join('</br>')
-                            }
-                        )
-                    )
+                    valueText = formatString(input[key], (array) => { return array.map((elem) => { return authorStr(elem) }).join('</br>') })
                     break;
                 case "date":
-                    if (Array.isArray(input["date"])) {
-                        setValue(this.fields[key], formatString(input["date"], (array) => { return array.join("-") }))
-                    } else {
-                        setValue(this.fields[key], "")
+                    if (Array.isArray(input[key])) {
+                        valueText = formatString(input[key], (array) => { return array.join("-") })
                     }
                     break;
                 case "journal":
-                    setValue(this.fields[key], formatString(input["container-title"]))
+                    valueText = formatString(input["container-title"])
                     break;
                 case "number":
-                    setValue(this.fields[key], formatString(input['page'] || input['article-number']))
+                    valueText = formatString(input['page'] || input['article-number'])
                     break;
                 case "file":
                     if (input['localfile']) {
                         const filename = input['localfile']
                         try {
-                            const url = await isAccessibleFile(filename)
+                            const url = await getAccessibleStorageURL(filename)
                             if (url) {
-                                setValue(this.fields[key], formatFileLink(url, filename));
+                                valueText = formatFileLink(url, filename);
                             } else {
-                                setValue(this.fields[key], filename);
+                                valueText = filename;
                             }
                         } catch {
-                            setValue(this.fields[key], filename);
+                            valueText = filename;
                         }
-                    } else {
-                        setValue(this.fields[key], "");
                     }
                     break;
                 case "tag":
-                    setValue(this.fields[key], formatString(input["tag"], (array) => { return array.join("</br>") }))
+                    valueText = formatString(input[key], (array) => { return array.join("</br>") })
                     break;
                 default:
-                    setValue(this.fields[key], formatString(input[key]))
+                    valueText = formatString(input[key])
             }
+            setValue(this.fields[key], valueText)
         }
         return;
     }

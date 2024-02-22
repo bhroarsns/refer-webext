@@ -22,12 +22,12 @@ async function isAccessible(url) {
             return true;
         })
     } catch (e) {
-        console.log(e)
+        console.warn("File not found in the storage.")
         return false;
     }
 }
 
-async function isAccessibleFile(filename) {
+async function getAccessibleStorageURL(filename) {
     const url = getStorageURL(filename);
     if (await isAccessible(url)) {
         return url
@@ -39,10 +39,8 @@ async function isAccessibleFile(filename) {
 async function redirectId(id) {
     const data = await searchLibrary(id);
     if (data["localfile"]) {
-        const url = await isAccessibleFile(data["localfile"]);
-        const body = {}
-        body[id.type] = id.value
-        await browser.runtime.sendMessage({ id: body }).finally(() => {
+        const url = await getAccessibleStorageURL(data["localfile"]);
+        await browser.runtime.sendMessage({ id: { [id.type]: id.value } }).finally(() => {
             return browser.windows.create({
                 type: "detached_panel",
                 url: url,
@@ -63,12 +61,7 @@ async function redirectDoi(details) {
 }
 
 async function redirectArxiv(details) {
-    const full = details.url.replace("https://arxiv.org/abs/", "")
-    const version = full.match(/v\d+$/)
-    let arxiv = full
-    if (version) {
-        arxiv = arxiv.replace(version[0], "")
-    }
+    const arxiv = details.url.replace("https://arxiv.org/abs/", "").replace(/v\d+$/g, "")
     await redirectId({ type: "arxiv", value: arxiv })
     return;
 }
@@ -77,7 +70,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(async (details) => {
     try {
         await redirectDoi(details)
     } catch (e) {
-        console.log(e.message);
+        console.error("On redirect DOI: " + e.message);
     }
 }, { urls: ["https://doi.org/*"] }, ["blocking", "requestHeaders"]);
 
@@ -85,7 +78,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(async (details) => {
     try {
         await redirectDoi(details)
     } catch (e) {
-        console.log(e.message);
+        console.error("On redirect DOI: " + e.message);
     }
 }, { urls: ["https://dx.doi.org/*"] }, ["blocking", "requestHeaders"]);
 
@@ -93,7 +86,7 @@ browser.webRequest.onBeforeSendHeaders.addListener(async (details) => {
     try {
         await redirectArxiv(details)
     } catch (e) {
-        console.log(e.message);
+        console.error("On redirect arXiv: " + e.message);
     }
 }, { urls: ["https://arxiv.org/abs/*"] }, ["blocking"]);
 

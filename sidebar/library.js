@@ -10,4 +10,6 @@ async function searchLibrary(id) {
     }
 }
 
-export { searchLibrary }
+export {
+    searchLibrary
+}

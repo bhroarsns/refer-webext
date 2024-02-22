@@ -43,7 +43,7 @@ function currentFilter(entry) {
         const value = filter.value
         if (show) {
             if (value && value !== "") {
-                const valueArr = value.split(",").map((str) => { return str.split('|') })
+                const valueArr = value.split(",").map((str) => { return str.trim().split('|').map((v) => { return v.trim() }) })
                 switch (key) {
                     case "author":
                         show = entry[key] && Array.isArray(entry[key]) && matchArr(valueArr, (v) => entry[key].map((aut) => { return aut["given"] + " " + aut["family"] }).join(", ").includes(v))

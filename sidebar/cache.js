@@ -1,6 +1,4 @@
-function idToLabel(id) {
-    return id.type + ":" + id.value
-}
+import { idToLabel } from "./util.js";
 
 async function getCache(id) {
     const storage = await browser.storage.local.get();
@@ -24,4 +22,16 @@ async function updateCache(id, changes) {
     return;
 }
 
-export { getCache, setCache, updateCache }
+async function clearCache() {
+    const sort = await browser.storage.local.get().then((data) => { return data["sort"]; });
+    await browser.storage.local.clear();
+    await browser.storage.local.set({ "sort": sort });
+    return;
+}
+
+export {
+    clearCache,
+    getCache,
+    setCache,
+    updateCache
+}

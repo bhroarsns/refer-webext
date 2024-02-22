@@ -1,130 +1,42 @@
-import {
-    formatFileLink,
-    formatString,
-    isAccessibleFile,
-    setValue
-} from "./util.js"
-
-import { searchLibrary } from "./library.js";
+import { authorStr, confirmPromise, formatFileLink, formatFilename, formatString, setValue } from "./util.js";
 import { getCache, updateCache } from "./cache.js";
-import { namingConvention } from "../customize-naming.js";
+import { httpRequest, queryArxivAPI } from "./http.js";
+import { parseArxivEntry, queryElementAttribute } from "./dom-query.js";
+import { executeTabQuery } from "./tabs.js";
+import { searchLibrary } from "./library.js";
+import { getAccessibleStorageURL } from "./storage.js";
 
-function formatFilename(input) {
-    return namingConvention(
-        input["date"],
-        input["author"],
-        input["title"],
-        input["container-title"],
-        input["container-title-short"],
-        input["volume"],
-        input["issue"],
-        input["page"],
-        input["article-number"]
-    );
-}
-
-async function httpRequest(key, value, format) {
-    const prefix = {
-        "doi": "https://doi.org/",
-        "arxiv_api": "https://export.arxiv.org/api/query?",
-        "none": ""
-    }
-    let headers = { "User-Agent": "refer-webext" }
-    switch (format) {
-        case "csl":
-            headers["Accept"] = "application/vnd.citationstyles.csl+json"
-            break;
-        case "xml":
-            headers["Accept"] = "application/xml"
-            break;
-    }
-
-    const response = await fetch(prefix[key] + value, { headers: headers });
-    if (!response.ok) {
-        throw new Error("Request failed.")
-    }
-
-    const type = { "xml": "application/xml", "html": "text/html" }
-    switch (format) {
-        case "csl":
-        case "json":
-            return await response.json();
-        case "xml":
-        case "html":
-            const text = await response.text();
-            const parser = new DOMParser();
-            const content = parser.parseFromString(text, type[format])
-            if (content.querySelector("parseerror")) {
-                throw new Error("Error on parse.");
-            }
-            return content;
-        default:
-            return await response.text();
-    }
-}
-
-async function queryArxivAPI(method, value) {
-    const content = await httpRequest("arxiv_api", method + "=" + value, "xml")
-    return content.documentElement.querySelector("entry");
-}
-
-async function getAbstractFromLink(data) {
-    if (!data["link"]) {
-        throw new Error("Link not found in metadata.")
-    }
-    const link = data["link"].find((obj) => { return obj["intended-application"] && obj["intended-application"] === "syndication" && obj["URL"] });
+async function getAbstractFromLink(links) {
+    const link = links.find((obj) => { return obj["intended-application"] && obj["intended-application"] === "syndication" && obj["URL"] });
     if (!link) {
         throw new Error("Link for syndication not found in metadata.")
     }
     const linkData = await httpRequest("none", link["URL"], "json");
     if (linkData["data"] && linkData["data"]["abstract"] && linkData["data"]["abstract"]["value"]) {
-        data["abstract"] = linkData["data"]["abstract"]["value"]
-        return;
+        return linkData["data"]["abstract"]["value"];
     } else {
         throw new Error("Abstract not found from provided link.")
     }
 }
 
-async function getAbstractFromHtmlResponse(data, doi) {
-    const page = await httpRequest("doi", doi, "json");
-    const meta = page.querySelector("meta[property=\'og:description\' i]") || page.querySelector("meta[name=\'description\' i]");
-    if (meta) {
-        data["abstract"] = meta.getAttribute("content")
-        return;
-    } else {
-        throw new Error("Abstract not found from html response.");
-    }
+async function getAbstractFromHtmlResponse(doi) {
+    const page = await httpRequest("doi", doi, "html");
+    return await queryElementAttribute(page.head, "abstract", "content");
 }
 
-async function getAbstractFromCurrentTab(data) {
-    const curTab = await browser.tabs.query({ currentWindow: true, active: true });
-    const content = await browser.tabs.executeScript(
-        curTab[0].id,
-        {
-            code: "let elem = document.querySelector('meta[property=\"og:description\" i]') || document.querySelector('meta[name=\"description\" i]');"
-                + "(elem ? elem.getAttribute('content') : elem);"
-        }
-    )
-    if (content && content[0]) {
-        data["abstract"] = content[0]
-        return;
-    } else {
-        throw new Error("Abstract not found from current tab.");
+async function extractArxivId(dom, givenTitle) {
+    const { arxiv, title } = parseArxivEntry(dom);
+    if (givenTitle && givenTitle.toLowerCase().replaceAll(/\s+/g, "") === title.toLowerCase().replaceAll(/\s+/g, "")) {
+        return arxiv;
     }
-}
-
-async function extractArxivId(dom) {
-    const node = dom.querySelector("id");
-    if (!node) {
-        throw new Error("No arXiv ID related to this DOI.")
-    }
-    const full = node.innerHTML.split("/").pop()
-    const version = full.match(/v\d+$/)
-    let arxiv = full
-    if (version) {
-        arxiv = arxiv.replace(version[0], "")
-    }
-    return arxiv
+    await confirmPromise(
+        "arXiv ID " + arxiv + " found, but its title seems to be different from original one.\n"
+        + title.replaceAll(/\s+/g, " ") + "\n"
+        + (givenTitle ? givenTitle.replaceAll(/\s+/g, " ") : "(No title given)") + "\n"
+        + "Are you sure to relate this arXiv ID with this reference?",
+        new Error("This arXiv ID denied by user.")
+    );
+    return arxiv;
 }
 
 async function convertDataToField(key, input) {
@@ -132,7 +44,7 @@ async function convertDataToField(key, input) {
         case "author":
             return formatString(
                 input['author'],
-                (array) => { return array.map((elem) => { return elem['given'] + ' ' + elem['family'] }).join('\n') }
+                (array) => { return array.map((elem) => { return authorStr(elem) }).join('\n') }
             );
         case "date":
             if (!input["date"]) {
@@ -170,14 +82,14 @@ async function convertDataToField(key, input) {
         case "number":
             return formatString(input['page'] || input['article-number']);
         case "file":
-            const filename = input['localfile'] ? input['localfile'] : formatFilename(input);
+            const filename = input['localfile'] || formatFilename(input);
             try {
                 await navigator.clipboard.writeText(filename.replace(".pdf", ""));
             } catch (e) {
-                console.log(e)
+                console.warn("On clipboard write: " + e.message)
             }
             try {
-                const url = await isAccessibleFile(filename);
+                const url = await getAccessibleStorageURL(filename);
                 if (url) {
                     input['localfile'] = filename
                     return formatFileLink(url, filename);
@@ -197,22 +109,15 @@ async function convertDataToField(key, input) {
 function convertFieldToData(key, field) {
     switch (key) {
         case "author":
-            const authors = field.value.split("\n").map((aut) => {
-                let array = aut.split(" ")
-                const family = array.pop();
-                const given = array.join(" ");
-                return { given: given, family: family }
-            })
-            return { "author": authors }
+            return { [key]: field.value.split("\n").map((aut) => { return authorObj(aut) }) }
         case "date":
-            const date = field.value.split("-").map((str) => { return Number(str) })
-            return { "date": date }
+            return { [key]: field.value.split("-").map((str) => { return Number(str) }) }
         case "journal":
             return { "container-title": field.value }
         case "number":
             return { "pages": field.value }
         case "tag":
-            return { "tag": field.value.split("\n") }
+            return { [key]: field.value.split("\n") }
         case "file":
             for (const node of field.children) {
                 if (node.tagName.toLowerCase === "a") {
@@ -220,9 +125,7 @@ function convertFieldToData(key, field) {
                 }
             }
         default:
-            let body = {}
-            body[key] = field.value
-            return body
+            return { [key]: field.value }
     }
 }
 
@@ -242,6 +145,7 @@ class EditFieldManager {
 
     log(msg) {
         setValue(this.logger, msg)
+        return;
     }
 
     reset() {
@@ -252,10 +156,12 @@ class EditFieldManager {
 
     block() {
         Object.values(this.fields).forEach((field) => { field.setAttribute("disabled", "true") })
+        return;
     }
 
     release() {
         Object.values(this.fields).forEach((field) => { field.removeAttribute("disabled") })
+        return;
     }
 
     async fill(id) {
@@ -284,53 +190,66 @@ class EditFieldManager {
 
     async getAbstract(data, doi) {
         try {
-            this.log("Fetching abstract from provided link...")
-            await getAbstractFromLink(data);
-            return;
+            if (data["link"]) {
+                this.log("Fetching abstract from provided link...")
+                data["abstract"] = await getAbstractFromLink(data["link"]);
+                console.info("Fetched abstract from syndication link.")
+                return;
+            }
         } catch (e) {
-            console.log(e)
+            console.warn(e)
         }
         try {
             this.log("Fetching abstract from html response...")
-            await getAbstractFromHtmlResponse(data, doi);
+            data["abstract"] = await getAbstractFromHtmlResponse(doi);
+            console.info("Fetched abstract from html response.")
             return;
         } catch (e) {
-            console.log(e)
+            console.warn(e)
         }
         try {
             this.log("Fetching abstract from current tab...")
-            await getAbstractFromCurrentTab(data);
+            data["abstract"] = await executeTabQuery("abstract", "content")
+            console.info("Fetched abstract from current tab.")
             return;
         } catch (e) {
-            console.log(e)
+            console.warn(e)
         }
         return;
     }
 
     async getArxivId(data, doi) {
+        const { title, author } = data;
         try {
-            this.log("Fetching arXiv ID related to this DOI...")
-            let raw = await queryArxivAPI("search_query", "all:" + doi);
-            if (!raw) {
-                throw new Error("No arXiv ID related to this DOI.")
-            }
-            data["arxiv"] = await extractArxivId(raw);
+            this.log("Fetching arXiv ID from current tab...")
+            data["arxiv"] = await executeTabQuery("arxiv", "content");
+            console.info("Fetched arXiv ID from current tab.")
             return;
         } catch (e) {
-            console.log(e)
+            console.warn(e)
         }
         try {
-            if (data["title"]) {
-                this.log("Fetching arXiv ID related to this title...")
-                raw = await queryArxivAPI("search_query", "ti:" + data["title"].replace(" ", "+"));
-                if (!raw) {
-                    throw new Error("No arXiv ID related to this title.");
-                }
-                data["arxiv"] = await extractArxivId(raw);
+            this.log("Fetching arXiv ID related to this DOI...")
+            const entry = await queryArxivAPI("search_query", { "all": doi });
+            data["arxiv"] = await extractArxivId(entry, title);
+            console.info("Fetched arXiv ID related to DOI.")
+            return;
+        } catch (e) {
+            console.warn(e)
+        }
+        try {
+            if (author && Array.isArray(author)) {
+                this.log("Fetching arXiv ID related to this title and authors...")
+                const entry = await queryArxivAPI("search_query", {
+                    "ti": title,
+                    "au": author.map((aut) => { return aut["family"] }).join(" ")
+                });
+                data["arxiv"] = await extractArxivId(entry, title);
+                console.info("Fetched arXiv ID related to author & title.")
                 return;
             }
         } catch (e) {
-            console.log(e)
+            console.warn(e)
         }
         return;
     }
@@ -344,34 +263,6 @@ class EditFieldManager {
             await this.getArxivId(data, doi);
         }
         return data;
-    }
-
-    async getFromArxiv(arxiv) {
-        const raw = await queryArxivAPI("id_list", arxiv);
-        if (!raw) {
-            throw new Error("arXiv ID not found.")
-        }
-        const authors = raw.querySelectorAll("author");
-        const author = [];
-        for (const aut of authors) {
-            let name = aut.querySelector("name").innerHTML.split(' ');
-            const family = name.pop();
-            const given = name.join(' ');
-            author.push({ given: given, family: family })
-        }
-        return {
-            created: {
-                "date-parts": [
-                    raw.querySelector("published").innerHTML.slice(0, 10).split("-").map((str) => { return Number(str) })
-                ]
-            },
-            title: raw.querySelector("title").innerHTML.replaceAll("\n", ""),
-            abstract: raw.querySelector("summary").innerHTML,
-            author: author,
-            "container-title": "arXiv",
-            "article-number": arxiv,
-            "arxiv": arxiv
-        }
     }
 
     async setFromLibrary(id) {
@@ -388,7 +279,7 @@ class EditFieldManager {
             this.release()
             return;
         } catch (e) {
-            console.log(e)
+            console.warn("Library search: " + e.message)
             this.release()
             throw new Error("Not found in the local library.")
         }
@@ -406,7 +297,7 @@ class EditFieldManager {
             if (id.type === "doi") {
                 data = await this.getFromDoi(id.value);
             } else if (id.type === "arxiv") {
-                data = await this.getFromArxiv(id.value);
+                data = parseArxivEntry(await queryArxivAPI("id_list", arxiv));
             } else {
                 throw new Error("No valid ID type given.");
             }
@@ -416,7 +307,7 @@ class EditFieldManager {
             this.release()
             return;
         } catch (e) {
-            console.log(e)
+            console.warn("Metadata fetch: " + e.message)
             this.release()
             throw new Error("Failed to fetch metadata.")
         }
@@ -439,7 +330,7 @@ class EditFieldManager {
 
     async setFilename(filename, message) {
         try {
-            const url = await isAccessibleFile(filename)
+            const url = await getAccessibleStorageURL(filename)
             if (url) {
                 setValue(this.fields["file"], formatFileLink(url, filename));
             } else {
@@ -461,13 +352,12 @@ class EditFieldManager {
             return;
         }
         if (content["localfile"]) {
-            await isAccessibleFile(content["localfile"]).then((url) => {
+            await getAccessibleStorageURL(content["localfile"]).then((url) => {
                 if (!url) {
                     delete content.localfile
                 }
                 return;
-            }, (e) => {
-                console.log(e)
+            }, () => {
                 delete content.localfile
                 return;
             });
