@@ -93,3 +93,75 @@ browser.webRequest.onBeforeSendHeaders.addListener(async (details) => {
 browser.browserAction.onClicked.addListener(() => {
     browser.sidebarAction.open()
 })
+
+browser.runtime.onInstalled.addListener(() => {
+    browser.contextMenus.create({
+        contexts: ["link"],
+        title: "Analyze link",
+        id: "link_analyze",
+        onclick: async (target) => {
+            await browser.sidebarAction.open();
+            const linkUrl = target["linkUrl"];
+            if (linkUrl) {
+                if (linkUrl.startsWith("https://doi.org/") || linkUrl.startsWith("https://dx.doi.org/")) {
+                    const doi = details.url.replace("https://doi.org/", "").replace("https://dx.doi.org/", "");
+                    await browser.runtime.sendMessage({ id: { doi: doi } });
+                    return;
+                } else if (linkUrl.startsWith("https://arxiv.org/abs/")) {
+                    const arxiv = details.url.replace("https://arxiv.org/abs/", "");
+                    await browser.runtime.sendMessage({ id: { arxiv: arxiv } });
+                    return;
+                } else {
+                    const response = await fetch(linkUrl);
+                    const body = await response.text();
+                    const parser = new DOMParser();
+                    const page = parser.parseFromString(body, "text/html");
+                    const doiMeta = page.querySelector("meta[name=\"citation_doi\" i]") || page.querySelector("meta[name=\"dc.identifier\" i][scheme=\"doi\" i]") || page.querySelector("meta[name=\"dc.identifier\" i]:not([scheme])")
+                    if (doiMeta) {
+                        const doi = doiMeta.getAttribute("content")
+                        if (doi) {
+                            await browser.runtime.sendMessage({ id: { doi: doi } });
+                            return;
+                        }
+                    }
+                    console.warn("DOI not found.")
+                    const arxivMeta = page.querySelector("meta[name=\"citation_arxiv_id\" i]")
+                    if (arxivMeta) {
+                        const arxiv = arxivMeta.getAttribute("content")
+                        if (arxiv) {
+                            await browser.runtime.sendMessage({ id: { arxiv: arxiv } });
+                            return;
+                        }
+                    }
+                    console.warn("arXiv ID not found.")
+                    await browser.runtime.sendMessage({ id: { url: linkUrl } });
+                    return;
+                }
+            }
+        }
+    });
+
+    browser.contextMenus.create({
+        contexts: ["selection"],
+        title: "Treat selection as DOI",
+        id: "selection_doi",
+        checked: false
+    });
+    browser.contextMenus.create({
+        contexts: ["selection"],
+        title: "Treat selection as arXiv ID",
+        id: "selection_arxiv",
+        checked: false
+    })
+    browser.contextMenus.onClicked.addListener(async (info) => {
+        console.log(info)
+        if (info.menuItemId === "selection_doi") {
+            await browser.runtime.sendMessage({ id: { doi: info.selectionText } });
+            return;
+        }
+        if (info.menuItemId === "selection_arxiv") {
+            await browser.runtime.sendMessage({ id: { arxiv: info.selectionText } });
+            return;
+        }
+    })
+})

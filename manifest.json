@@ -12,6 +12,7 @@
   "permissions": [
     "<all_urls>",
     "clipboardWrite",
+    "contextMenus",
     "downloads",
     "nativeMessaging",
     "storage",

@@ -18,8 +18,11 @@ let mode = "lib"
 const containers = {}
 
 async function showLibrary(id) {
-    await libField.setFromLibrary(id);
-    await editField.setAuto(id);
+    if (mode === "lib") {
+        await libField.setFromLibrary(id);
+    } else if (mode === "edit") {
+        await editField.setAuto(id);
+    }
     return;
 }
 
