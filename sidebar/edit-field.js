@@ -1,10 +1,10 @@
-import { authorStr, confirmPromise, formatFileLink, formatFilename, formatString, setValue } from "./util.js";
-import { getCache, updateCache } from "./cache.js";
-import { httpRequest, queryArxivAPI } from "./http.js";
-import { parseArxivEntry, queryElementAttribute } from "./dom-query.js";
-import { executeTabQuery, getCurrentTabId } from "./tabs.js";
-import { searchLibrary } from "./library.js";
-import { getAccessibleStorageURL } from "./storage.js";
+import { authorStr, authorObj, confirmPromise, formatFileLink, formatFilename, formatString, setValue } from "../modules/util.js";
+import { getCache, updateCache } from "../modules/cache.js";
+import { httpRequest, queryArxivAPI } from "../modules/http.js";
+import { parseArxivEntry, queryElementAttribute } from "../modules/dom-query.js";
+import { executeTabQuery, getCurrentTabId } from "../modules/tabs.js";
+import { searchLibrary } from "../modules/library.js";
+import { getAccessibleStorageURL } from "../modules/storage.js";
 
 async function getAbstractFromLink(links) {
     const link = links.find((obj) => { return obj["intended-application"] && obj["intended-application"] === "syndication" && obj["URL"] });
@@ -52,6 +52,7 @@ async function convertDataToField(key, input) {
             );
         case "date":
             if (!input["date"]) {
+                console.log("aaa")
                 const dateKeys = ["published", "published-online", "published-print", "issued", "created", "deposited"]
                 let candidates = []
                 for (const key of dateKeys) {

@@ -41,18 +41,13 @@ async function redirectId(id) {
     if (data["localfile"]) {
         const url = await getAccessibleStorageURL(data["localfile"]);
         await browser.runtime.sendMessage({ id: { [id.type]: id.value } }).finally(() => {
-            return browser.windows.create({
-                type: "detached_panel",
-                url: url,
-                height: 1080,
-                width: 1440
-            });
+            return browser.tabs.create({ url: url });
         })
     }
 }
 
 async function redirectDoi(details) {
-    if (details.requestHeaders.find((header) => header.name.toLowerCase() === "user-agent" && header.value === "refer-webext")) {
+    if (details.requestHeaders && details.requestHeaders.find((header) => header.name.toLowerCase() === "user-agent" && header.value === "refer-webext")) {
         return;
     }
     const doi = details.url.replace("https://doi.org/", "").replace("https://dx.doi.org/", "");
@@ -61,6 +56,10 @@ async function redirectDoi(details) {
 }
 
 async function redirectArxiv(details) {
+    console.log(details)
+    if (details.requestHeaders && details.requestHeaders.find((header) => header.name.toLowerCase() === "user-agent" && header.value === "refer-webext")) {
+        return;
+    }
     const arxiv = details.url.replace("https://arxiv.org/abs/", "").replace(/v\d+$/g, "")
     await redirectId({ type: "arxiv", value: arxiv })
     return;
@@ -103,16 +102,32 @@ browser.runtime.onInstalled.addListener(() => {
             await browser.sidebarAction.open();
             const linkUrl = target["linkUrl"];
             if (linkUrl) {
-                if (linkUrl.startsWith("https://doi.org/") || linkUrl.startsWith("https://dx.doi.org/")) {
-                    const doi = details.url.replace("https://doi.org/", "").replace("https://dx.doi.org/", "");
+                if (linkUrl.startsWith("https://doi.org/")) {
+                    const doi = linkUrl.replace("https://doi.org/", "");
+                    await browser.runtime.sendMessage({ id: { doi: doi } });
+                    return;
+                } else if (linkUrl.startsWith("https://dx.doi.org/")) {
+                    const doi = linkUrl.replace("https://dx.doi.org/", "");
+                    await browser.runtime.sendMessage({ id: { doi: doi } });
+                    return;
+                } else if (linkUrl.startsWith("http://doi.org/")) {
+                    const doi = linkUrl.replace("http://doi.org/", "");
+                    await browser.runtime.sendMessage({ id: { doi: doi } });
+                    return;
+                } else if (linkUrl.startsWith("http://dx.doi.org/")) {
+                    const doi = linkUrl.replace("http://dx.doi.org/", "");
                     await browser.runtime.sendMessage({ id: { doi: doi } });
                     return;
                 } else if (linkUrl.startsWith("https://arxiv.org/abs/")) {
-                    const arxiv = details.url.replace("https://arxiv.org/abs/", "");
+                    const arxiv = linkUrl.replace("https://arxiv.org/abs/", "");
+                    await browser.runtime.sendMessage({ id: { arxiv: arxiv } });
+                    return;
+                } else if (linkUrl.startsWith("http://arxiv.org/abs/")) {
+                    const arxiv = linkUrl.replace("http://arxiv.org/abs/", "");
                     await browser.runtime.sendMessage({ id: { arxiv: arxiv } });
                     return;
                 } else {
-                    const response = await fetch(linkUrl);
+                    const response = await fetch(linkUrl, { headers: { "User-Agent": "refer-webext" } });
                     const body = await response.text();
                     const parser = new DOMParser();
                     const page = parser.parseFromString(body, "text/html");
@@ -145,13 +160,11 @@ browser.runtime.onInstalled.addListener(() => {
         contexts: ["selection"],
         title: "Treat selection as DOI",
         id: "selection_doi",
-        checked: false
     });
     browser.contextMenus.create({
         contexts: ["selection"],
         title: "Treat selection as arXiv ID",
         id: "selection_arxiv",
-        checked: false
     })
     browser.contextMenus.onClicked.addListener(async (info) => {
         console.log(info)

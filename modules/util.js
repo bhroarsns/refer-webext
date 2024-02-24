@@ -25,6 +25,15 @@ function formatFileLink(link, filename) {
     return "<a href='" + link + "' target='_blank' rel='noreferrer noopener'>" + filename + "</a>"
 }
 
+function formatLink(type, content) {
+    switch (type) {
+        case "doi":
+            return "<a href='https://doi.org/" + content + "' target='_blank' rel='noreferrer noopener'>" + content + "</a>";
+        case "arxiv":
+            return "<a href='https://arxiv.org/abs/" + content + "' target='_blank' rel='noreferrer noopener'>" + content + "</a>";
+    }
+}
+
 function formatFilename(input) {
     return namingConvention(
         input["date"],
@@ -41,10 +50,6 @@ function formatFilename(input) {
 
 function formatString(obj, fn) {
     return obj ? (fn ? fn(obj) : obj) : ""
-}
-
-function idToLabel(id) {
-    return id.type + ":" + id.value
 }
 
 function setValue(element, value) {
@@ -69,7 +74,7 @@ export {
     confirmPromise,
     formatFileLink,
     formatFilename,
+    formatLink,
     formatString,
-    idToLabel,
     setValue
 }

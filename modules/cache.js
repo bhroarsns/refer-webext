@@ -1,4 +1,6 @@
-import { idToLabel } from "./util.js";
+function idToLabel(id) {
+    return id.type + ":" + id.value
+}
 
 async function getCache(id) {
     const storage = await browser.storage.local.get();
@@ -6,9 +8,7 @@ async function getCache(id) {
 }
 
 async function setCache(id, content) {
-    let body = {}
-    body[idToLabel(id)] = content
-    await browser.storage.local.set(body)
+    await browser.storage.local.set({ [idToLabel(id)]: content })
     return;
 }
 

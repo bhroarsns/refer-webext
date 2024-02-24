@@ -1,3 +1,54 @@
-body, section {
-    width: 4800px,
+body {
+    width: 2400px;
+}
+
+table {
+    table-layout: fixed;
+    max-width: 2400px;
+}
+
+th#author-head {
+    width: 150px;
+}
+
+th#year-head {
+    width: 60px;
+}
+
+th#title-head {
+    width: 400px;
+}
+
+th#abstract-head {
+    width: 400px;
+}
+
+th#journal-head {
+    width: 200px;
+}
+
+th#doi-head {
+    width: 100px;
+}
+
+th#arxiv-head {
+    width: 100px;
+}
+
+th#file-head {
+    width: 200px;
+}
+
+th#tag-head {
+    width: 300px;
+}
+
+td {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+table tr td:nth-of-type(2) {
+    text-align: center;
 }

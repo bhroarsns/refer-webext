@@ -19,12 +19,12 @@ function formatAuthor(entry) {
         if (entry["author"].length > 3) {
             const sliced = entry["author"].slice(0, 3)
             return sliced.map((author) => {
-                return author["given"] + " " + author["family"]
-            }).join(", ") + " et al."
+                return author["given"].split(/\s+/g).map((str) => { return str[0] + "."}).join(" ") + " " + author["family"]
+            }).join(",</br>") + ", et al."
         } else {
             return entry["author"].map((author) => {
-                return author["given"] + " " + author["family"]
-            }).join(", ")
+                return author["given"].split(/\s+/g).map((str) => { return str[0] + "."}).join(" ") + " " + author["family"]
+            }).join("</br>")
         }
     } else {
         return ""
@@ -86,9 +86,9 @@ function setTable() {
         let date = row.appendChild(document.createElement("td"))
         date.innerHTML = display[i]["date"] ? display[i]["date"][0] : ""
         let title = row.appendChild(document.createElement("td"))
-        title.innerHTML = display[i]["title"] ? "<a href='" + browser.runtime.getURL("library/" + display[i]["library"] + ".json") + "' target='_blank' rel='noreferrer noopener'>" + display[i]["title"] + "</a>" : ""
+        title.innerHTML = display[i]["title"] ? "<a href='" + browser.runtime.getURL("extension-page/library.html") + "?index=" + display[i]["library"] + "' target='_blank' rel='noreferrer noopener'>" + display[i]["title"] + "</a>" : ""
         let abstract = row.appendChild(document.createElement("td"))
-        abstract.innerHTML = display[i]["abstract"] ? (display[i]["abstract"].length > 100 ? display[i]["abstract"].slice(0, 100) + "..." : display[i]["abstract"].slice(0, 100)) : ""
+        abstract.innerHTML = display[i]["abstract"] ? display[i]["abstract"] : ""
         let journal = row.appendChild(document.createElement("td"))
         journal.innerHTML = display[i]["journal"] ? display[i]["journal"] : ""
         let doi = row.appendChild(document.createElement("td"))
@@ -204,6 +204,7 @@ window.addEventListener('load', async () => {
         await reloadData();
         sortData()
         setTable()
+        await new Promise((resolve, reject) => {setTimeout(resolve, 3000)}).then(() => {document.getElementById("refresh-log").innerHTML = ""})
     })
 
     document.getElementById("reset").addEventListener('click', () => { resetFilter(); setTable(); })

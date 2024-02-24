@@ -1,15 +1,15 @@
 import { IdFieldManager } from "./id-field.js"
-import { LibFieldManager } from "./lib-field.js"
+import { LibCardManager } from "./lib-card.js"
 import { convertFieldToData, EditFieldManager } from "./edit-field.js"
-import { clearCache, updateCache } from "./cache.js"
-import { confirmPromise } from "./util.js"
-import { getCurrentTabId, getId } from "./tabs.js"
+import { clearCache, updateCache } from "../modules/cache.js"
+import { confirmPromise } from "../modules/util.js"
+import { getCurrentTabId, getId } from "../modules/tabs.js"
 
 let pathToExtension
 let extensionName
 
 let idField
-let libField
+let libCard
 let editField
 
 let download = {}
@@ -19,7 +19,7 @@ const containers = {}
 
 async function showLibrary(id) {
     if (mode === "lib") {
-        await libField.setFromLibrary(id);
+        await libCard.setFromLibrary(id);
     } else if (mode === "edit") {
         await editField.setAuto(id);
     }
@@ -69,8 +69,9 @@ window.addEventListener('load', async () => {
             containers[container.id.replace("-container", "")] = container
         }
     }
+
     idField = new IdFieldManager()
-    libField = new LibFieldManager()
+    libCard = new LibCardManager(document.getElementById("lib"))
     editField = new EditFieldManager()
 
     browser.tabs.onActivated.addListener(async (info) => { await loadTab(info.tabId) })
@@ -116,8 +117,8 @@ window.addEventListener('load', async () => {
         }
     })
 
-    document.getElementById("id-get").addEventListener('click', async () => { await loadTab(await getCurrentTabId()); })
-    document.getElementById("lib-get").addEventListener('click', () => { libField.setFromLibrary(idField.currentId) })
+    document.getElementById("id-get").addEventListener('click', async () => { await loadTab(await getCurrentTabId(), true); })
+    document.getElementById("lib-get").addEventListener('click', () => { libCard.setFromLibrary(idField.currentId) })
     document.getElementById("lib-edit").addEventListener('click', async () => { switchMode("edit"); await showLibrary(idField.currentId); })
     document.getElementById("edit-get").addEventListener('click', () => { editField.setFromLibrary(idField.currentId).catch((e) => { editField.log(e.message) }) })
     document.getElementById("edit-fetch").addEventListener('click', () => { editField.setFromInternet(idField.currentId).catch((e) => { editField.log(e.message) }) })
@@ -162,7 +163,7 @@ window.addEventListener('load', async () => {
     })
 
     switchMode(mode)
-    libField.reset()
+    libCard.reset()
     editField.reset()
     await clearCache();
     await loadTab(await getCurrentTabId());

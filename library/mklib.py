@@ -84,6 +84,10 @@ def parseLibrary(path):
         data["date"] = publishedDate(data)
         with open(path, "w") as w:
             w.write(json.dumps(data, indent=4))
+    else:
+        for i in range(len(data["date"])):
+            if data["date"][i] == 0:
+                data["date"][i] = 1
     if "redirect" in data:
         redir = json.load(open(data["redirect"]+".json"))
         if "arxiv" in redir:
