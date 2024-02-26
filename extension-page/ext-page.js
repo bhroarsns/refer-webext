@@ -19,11 +19,11 @@ function formatAuthor(entry) {
         if (entry["author"].length > 3) {
             const sliced = entry["author"].slice(0, 3)
             return sliced.map((author) => {
-                return author["given"].split(/\s+/g).map((str) => { return str[0] + "."}).join(" ") + " " + author["family"]
+                return author["given"].split(/\s+/g).map((str) => { return str[0] + "." }).join(" ") + " " + author["family"]
             }).join(",</br>") + ", et al."
         } else {
             return entry["author"].map((author) => {
-                return author["given"].split(/\s+/g).map((str) => { return str[0] + "."}).join(" ") + " " + author["family"]
+                return author["given"].split(/\s+/g).map((str) => { return str[0] + "." }).join(" ") + " " + author["family"]
             }).join("</br>")
         }
     } else {
@@ -70,16 +70,15 @@ function setTable() {
         row.setAttribute("id", display[i]["library"])
         row.addEventListener('click', async () => {
             await browser.sidebarAction.open().then(() => {
-                return new Promise(resolve => { return setTimeout(resolve, 100) })
-            }).finally(() => {
-                return browser.runtime.sendMessage({
-                    id: {
-                        "doi": display[i]["doi"] || "",
-                        "arxiv": display[i]["arxiv"] || "",
-                        "url": display[i]["url"] || ""
-                    }
-                })
+                return new Promise((resolve, reject) => { return setTimeout(resolve, 100) })
             })
+            await browser.runtime.sendMessage({
+                id: {
+                    "doi": display[i]["doi"] || "",
+                    "arxiv": display[i]["arxiv"] || "",
+                    "url": display[i]["url"] || ""
+                }
+            });
         })
         let author = row.appendChild(document.createElement("td"))
         author.innerHTML = formatAuthor(display[i])
@@ -100,7 +99,7 @@ function setTable() {
         let tag = row.appendChild(document.createElement("td"))
         tag.innerHTML = display[i]["tag"] ? display[i]["tag"].join(", ") : ""
         let note = row.appendChild(document.createElement("td"))
-        note.innerHTML = display[i]["note"] ? display[i]["note"].replace("\n", "</br>") : ""
+        note.innerHTML = display[i]["note"] ? display[i]["note"].replaceAll(/\s+/g, " ") : ""
     }
     return;
 }
@@ -204,7 +203,7 @@ window.addEventListener('load', async () => {
         await reloadData();
         sortData()
         setTable()
-        await new Promise((resolve, reject) => {setTimeout(resolve, 3000)}).then(() => {document.getElementById("refresh-log").innerHTML = ""})
+        await new Promise((resolve, reject) => { setTimeout(resolve, 3000) }).then(() => { document.getElementById("refresh-log").innerHTML = "" })
     })
 
     document.getElementById("reset").addEventListener('click', () => { resetFilter(); setTable(); })

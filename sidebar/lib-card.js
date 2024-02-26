@@ -10,17 +10,17 @@ const library = {
         displayName: "Author",
         treatment: (input) => { return input.map((aut) => { return { key: "author", link: aut["given"][0] + ", " + aut["family"], text: authorStr(aut) } }); }
     },
-    date: { assumeArray: true, displayName: "Date", treatment: (input) => { return input.join("-") } },
     title: { displayName: "Title" },
-    abstract: { displayName: "Abstract" },
     journal: { displayName: "Journal", dataKeys: ["container-title"] },
     volume: { displayName: "Volume" },
     issue: { displayName: "Issue" },
     number: { displayName: "Number", dataKeys: ["article-number", "page"] },
+    date: { assumeArray: true, displayName: "Date", treatment: (input) => { return input.join("-") } },
     doi: { displayName: "DOI", dataKeys: ["doi", "DOI"], treatment: (input) => { return formatLink("doi", input) } },
     arxiv: { displayName: "arXiv ID", treatment: (input) => { return formatLink("arxiv", input) } },
+    abstract: { displayName: "Abstract" },
     tag: { assumeArray: true, displayName: "Tag", internalLink: true, treatment: (input) => { return input.map((tag) => { return { key: "tag", link: tag, text: tag } }) } },
-    note: { displayName: "Note" },
+    note: { displayName: "Note", treatment: (input) => { return "<p>" + input.replaceAll("\n", "</p><p>") + "</p>" } },
     file: {
         displayName: "File",
         dataKeys: ["localfile", "localfile_suppl"],
@@ -41,7 +41,7 @@ const library = {
             }
             return result
         }
-    },
+    }
 }
 
 function setInternalLink(node, value) {
@@ -66,7 +66,10 @@ function setInternalLink(node, value) {
 class LibCardManager {
     card;
     fields = {};
+    libLink;
     logger;
+    locked;
+    idToDisplay;
     constructor(libCard) {
         this.card = libCard
         const field = this.card.appendChild(document.createElement("dl"))
@@ -75,8 +78,10 @@ class LibCardManager {
             const listContent = field.appendChild(document.createElement("div"))
             this.fields[libKey] = listContent
         }
+        this.libLink = field.appendChild(document.createElement("div"))
         this.logger = this.card.appendChild(document.createElement("div"))
         this.logger.setAttribute("class", "card-footer")
+        this.locked = false;
     }
 
     log(msg) {
@@ -98,6 +103,7 @@ class LibCardManager {
             return;
         }
         this.log("-")
+        this.libLink.innerHTML = ""
         Object.values(this.fields).forEach((field) => {
             field.innerHTML = ""
         })
@@ -119,7 +125,7 @@ class LibCardManager {
         }
     }
 
-    async fill(input) {
+    async fill(id, input) {
         if (!input) {
             return;
         }
@@ -140,20 +146,39 @@ class LibCardManager {
             values = Array.isArray(values) ? values : [values]
             this.setField(key, values)
         }
+        const libLinkTitle = this.libLink.appendChild(document.createElement("dt"));
+        libLinkTitle.innerHTML = "Library Link"
+        const libLinkDesc = this.libLink.appendChild(document.createElement("dd"));
+        libLinkDesc.innerHTML = "<a href='" + browser.runtime.getURL("extension-page/library.html") + "?index=" + id.type + "/" + id.value + "' target='_blank' rel='noreferrer noopener'>" + id.type + "/" + id.value + "</a>"
         return;
     }
 
-    async setFromLibrary(id) {
-        if (!id) {
+    async setFromLibrary(id, force) {
+        if (this.locked) {
+            console.log("locked!")
             return;
         }
+        this.locked = true
+        if (!id) {
+            this.locked = false
+            return;
+        }
+        if (!force && this.idToDisplay && id.type === this.idToDisplay.type && id.value === this.idToDisplay.value) {
+            this.locked = false
+            return;
+        }
+        this.idToDisplay = id
         this.reset()
-        await searchLibrary(id).then(async (data) => {
+        await searchLibrary(this.idToDisplay).then(async (data) => {
             this.log("Found in the local library.")
-            return this.fill(data)
+            await this.fill(this.idToDisplay, data)
+            this.locked = false
+            return;
         }).catch((e) => {
             console.warn(e)
             this.log("Not found in the local library.")
+            this.locked = false
+            return;
         })
     }
 }

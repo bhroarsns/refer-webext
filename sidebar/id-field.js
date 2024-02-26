@@ -4,6 +4,7 @@ class IdFieldManager {
     selector;
     fields = {};
     idOptions = [];
+    index;
     constructor() {
         this.selector = document.getElementById("id-type");
         for (const node of document.getElementById("id-fields").children) {
@@ -12,7 +13,7 @@ class IdFieldManager {
         for (const opt of this.selector.options) {
             this.idOptions.push(opt.value)
         }
-
+        this.index = fetch(browser.runtime.getURL("library/index.json")).then((resp) => { return resp.json() })
         setValue(this.selector, "url")
         this.show("url")
     }
@@ -22,14 +23,29 @@ class IdFieldManager {
         return { type: type, value: this.fields[type].value };
     }
 
-    set(allId, force) {
-        const keys = Object.keys(allId)
+    async set(allId, force) {
+        let keys = Object.keys(allId)
         if (keys.filter((key) => { return key !== "url" }).length === 0) {
-            if (!force) {
-                return;
-            }
-            if (allId["url"] && (allId["url"].startsWith("moz-extension://") || allId["url"].startsWith("about:"))) {
-                return;
+            if (allId["url"] && allId["url"].startsWith("moz-extension://")) {
+                const url = new URL(allId["url"])
+                const filename = url.pathname.replace(/^\/files\//g, "");
+                if (!filename) {
+                    return;
+                }
+                const libInd = Object.values(await this.index).find((lib) => { return lib["file"] && lib["file"] === filename })
+                if (!libInd) {
+                    return;
+                }
+                allId["doi"] = libInd["doi"]
+                allId["arxiv"] = libInd["arxiv"]
+                keys = Object.keys(allId)
+            } else {
+                if (!force) {
+                    return;
+                }
+                if (allId["url"] && allId["url"].startsWith("about:")) {
+                    return;
+                }
             }
         }
 

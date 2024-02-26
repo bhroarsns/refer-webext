@@ -35,7 +35,7 @@ async function loadTab(tabId, force) {
             console.warn(e.message)
         }
     }
-    const focusedType = idField.set(allId, force)
+    const focusedType = await idField.set(allId, force)
     if (focusedType) {
         switchMode("lib")
         await showLibrary(idField.show(focusedType));
@@ -112,13 +112,13 @@ window.addEventListener('load', async () => {
         const id = download[item.id]
         if (id) {
             if (item.state && item.state.current === "complete") {
-                showLibrary(idField.show(idField.set({ [id.type]: id.value })))
+                showLibrary(idField.show(await idField.set({ [id.type]: id.value })))
             }
         }
     })
 
     document.getElementById("id-get").addEventListener('click', async () => { await loadTab(await getCurrentTabId(), true); })
-    document.getElementById("lib-get").addEventListener('click', () => { libCard.setFromLibrary(idField.currentId) })
+    document.getElementById("lib-get").addEventListener('click', () => { libCard.setFromLibrary(idField.currentId, true) })
     document.getElementById("lib-edit").addEventListener('click', async () => { switchMode("edit"); await showLibrary(idField.currentId); })
     document.getElementById("edit-get").addEventListener('click', () => { editField.setFromLibrary(idField.currentId).catch((e) => { editField.log(e.message) }) })
     document.getElementById("edit-fetch").addEventListener('click', () => { editField.setFromInternet(idField.currentId).catch((e) => { editField.log(e.message) }) })
@@ -171,5 +171,5 @@ window.addEventListener('load', async () => {
 
 browser.runtime.onMessage.addListener(async (msg) => {
     switchMode(msg["mode"] ? msg["mode"] : "lib")
-    await showLibrary(idField.show(idField.set(msg["id"], true)));
+    await showLibrary(idField.show(await idField.set(msg["id"], true)));
 })
