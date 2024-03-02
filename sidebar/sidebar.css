@@ -1,3 +1,7 @@
+dd {
+  user-select: text;
+}
+
 .card-footer {
   font-weight: bold;
 }

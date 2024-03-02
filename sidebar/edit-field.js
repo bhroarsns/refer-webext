@@ -120,7 +120,7 @@ function convertFieldToData(key, field) {
         case "journal":
             return { "container-title": field.value }
         case "number":
-            return { "pages": field.value }
+            return { "page": field.value }
         case "tag":
             return { [key]: field.value.split("\n") }
         case "file":
@@ -303,6 +303,8 @@ class EditFieldManager {
                 data = await this.getFromDoi(id.value);
             } else if (id.type === "arxiv") {
                 data = parseArxivEntry(await queryArxivAPI("id_list", [id.value]));
+            } else if (id.type === "url") {
+                data = { url: id.value }
             } else {
                 throw new Error("No valid ID type given.");
             }

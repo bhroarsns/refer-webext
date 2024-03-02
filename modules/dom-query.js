@@ -20,7 +20,8 @@ const queryType = { "doi": "DOI", "arxiv": "arXiv ID", "abstract": "Abstract" }
 
 //for browser.tabs.executeScript
 function getQueryScript(type, returnAttribute) {
-    return "var elem = " + querySelectors[type].map((selector) => { return "document.querySelector('" + selector + "')" }).join(" || ") + ";"
+    return "var elem = "
+        + querySelectors[type].map((selector) => { return "document.querySelector('" + selector + "')" }).join(" || ") + ";"
         + "elem ? elem.getAttribute('" + returnAttribute + "') : elem"
 }
 

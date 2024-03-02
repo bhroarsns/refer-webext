@@ -36,6 +36,7 @@ class IdFieldManager {
                 if (!libInd) {
                     return;
                 }
+                allId["url"] = libInd["url"] || allId["url"]
                 allId["doi"] = libInd["doi"]
                 allId["arxiv"] = libInd["arxiv"]
                 keys = Object.keys(allId)

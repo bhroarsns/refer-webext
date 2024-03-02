@@ -22,7 +22,7 @@ async function executeTabQuery(type, returnAttribute, tabId) {
 async function getId(tabId, type) {
     if (type === "url") {
         const tab = await browser.tabs.get(tabId);
-        return tab.url;
+        return tab.url.replace("https://", "").replace("http://", "");
     }
     let value = await executeTabQuery(type, "content", tabId);
     if (type === "doi" && value.startsWith("doi:")) { value = value.replace("doi:", "") }

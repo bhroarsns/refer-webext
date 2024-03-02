@@ -99,7 +99,9 @@ browser.runtime.onInstalled.addListener(() => {
         title: "Analyze link",
         id: "link_analyze",
         onclick: async (target) => {
-            await browser.sidebarAction.open();
+            await browser.sidebarAction.open().then(() => {
+                return new Promise((resolve, reject) => { setTimeout(resolve, 100) });
+            });
             const linkUrl = target["linkUrl"];
             if (linkUrl) {
                 if (linkUrl.startsWith("https://doi.org/")) {

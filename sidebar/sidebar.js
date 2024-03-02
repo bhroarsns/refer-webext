@@ -26,7 +26,7 @@ async function showLibrary(id) {
     return;
 }
 
-async function loadTab(tabId, force) {
+async function loadTab(tabId, force, toggle) {
     const allId = {}
     for (const type of idField.idOptions) {
         try {
@@ -37,7 +37,9 @@ async function loadTab(tabId, force) {
     }
     const focusedType = await idField.set(allId, force)
     if (focusedType) {
-        switchMode("lib")
+        if (toggle) {
+            switchMode("lib")
+        }
         await showLibrary(idField.show(focusedType));
     }
     return;
@@ -74,7 +76,7 @@ window.addEventListener('load', async () => {
     libCard = new LibCardManager(document.getElementById("lib"))
     editField = new EditFieldManager()
 
-    browser.tabs.onActivated.addListener(async (info) => { await loadTab(info.tabId) })
+    browser.tabs.onActivated.addListener(async (info) => { await loadTab(info.tabId, false, true) })
     browser.tabs.onUpdated.addListener(async (tabId) => { await loadTab(tabId) })
     browser.windows.onFocusChanged.addListener(async (windowId) => { await loadTab(await getCurrentTabId(windowId)); })
     browser.downloads.onCreated.addListener(async (item) => {
