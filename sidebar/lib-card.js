@@ -10,7 +10,7 @@ const library = {
         displayName: "Author",
         treatment: (input) => { return input.map((aut) => { return { key: "author", link: aut["given"][0] + ", " + aut["family"], text: authorStr(aut) } }); }
     },
-    title: { displayName: "Title" },
+    title: { displayName: "Title", treatment: (input) => { return "<a href='https://scholar.google.co.jp/scholar?q=" + input.replaceAll(/\s+/g, "+") + "' target='_blank' rel='noreferer noopener'>" + input + "</a>" } },
     journal: { displayName: "Journal", dataKeys: ["container-title"] },
     volume: { displayName: "Volume" },
     issue: { displayName: "Issue" },
