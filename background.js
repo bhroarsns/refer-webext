@@ -168,6 +168,16 @@ browser.runtime.onInstalled.addListener(() => {
         title: "Treat selection as arXiv ID",
         id: "selection_arxiv",
     })
+    browser.contextMenus.create({
+        contexts: ["selection"],
+        title: "Search author",
+        id: "selection_author",
+    })
+    browser.contextMenus.create({
+        contexts: ["selection"],
+        title: "Search title",
+        id: "selection_title",
+    })
     browser.contextMenus.onClicked.addListener(async (info) => {
         console.log(info)
         if (info.menuItemId === "selection_doi") {
@@ -177,6 +187,24 @@ browser.runtime.onInstalled.addListener(() => {
         if (info.menuItemId === "selection_arxiv") {
             await browser.runtime.sendMessage({ id: { arxiv: info.selectionText } });
             return;
+        }
+        if (info.menuItemId === "selection_author") {
+            await browser.tabs.create({ url: browser.runtime.getURL("extension-page/index.html") }).then((tab) => {
+                return new Promise((resolve, reject) => {
+                    return setTimeout(() => { return resolve(tab.id) }, 100)
+                })
+            }).then((tabId) => {
+                return browser.tabs.sendMessage(tabId, { method: "fill", key: "author", value: info.selectionText });
+            })
+        }
+        if (info.menuItemId === "selection_title") {
+            await browser.tabs.create({ url: browser.runtime.getURL("extension-page/index.html") }).then((tab) => {
+                return new Promise((resolve, reject) => {
+                    return setTimeout(() => { return resolve(tab.id) }, 100)
+                })
+            }).then((tabId) => {
+                return browser.tabs.sendMessage(tabId, { method: "fill", key: "title", value: info.selectionText });
+            })
         }
     })
 })
