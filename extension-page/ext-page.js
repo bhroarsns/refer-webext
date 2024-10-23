@@ -119,7 +119,7 @@ function generateSortKey(obj, key) {
             for (let i = 0; i < 3 - date.length; i++) {
                 date.push(0)
             }
-            return "" + date[0] + (date[1] > 10 ? date[1] : "0" + date[1]) + (date[2] > 10 ? date[2] : "0" + date[2]);
+            return "" + date[0] + (date[1] < 10 ? "0" + date[1] : date[1]) + (date[2] < 10 ? "0" + date[2] : date[2]);
         case "author":
             let author = obj["author"]
             if (author && Array.isArray(author) && author.length > 0) {
